@@ -1,0 +1,302 @@
+/*
+  液态玻璃动效组件库 —— 供 lecture.html(分页讲义)使用。
+  这份文件是"写一次、到处用"的共享资产:导出课件时把这个文件的全部内容原样内联进
+  <style> 标签,不要每次现场重写一遍动效代码——那样没法保证"每次都稳定呈现"。
+  配色用 CSS 变量(--brand-deep / --brand / --brand-bright / --brand-soft / --paper-warm / --ink),
+  引用页要在自己的 :root 里先定义好这些变量,这份文件只负责动效本身,不写死色值。
+*/
+
+/* ---------- 基础缓动:用"回弹"曲线模拟弹簧质感,不依赖额外JS库编译弹簧曲线 ---------- */
+:root {
+  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);   /* 过冲回弹,用于入场/切换 */
+  --ease-snappy: cubic-bezier(0.22, 1, 0.36, 1);        /* 干脆利落,用于按钮/反馈 */
+  --ease-smooth: cubic-bezier(0.4, 0, 0.2, 1);          /* 标准平滑,用于渐隐渐显 */
+}
+
+/* ================= ① 入场动效:元素滚入视口时浮现 ================= */
+.reveal {
+  opacity: 0;
+  transform: translateY(18px);
+  transition: opacity 0.55s var(--ease-smooth), transform 0.55s var(--ease-spring);
+}
+.reveal.is-visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+/* 同一组里的多个 .reveal 元素依次错开,靠 JS 给每个元素设置 --reveal-delay */
+.reveal { transition-delay: var(--reveal-delay, 0s); }
+
+/* ================= ② 幕间过渡:课件翻页 ================= */
+.slide-deck {
+  scroll-snap-type: y proximity;
+  scroll-behavior: smooth;
+}
+.slide {
+  scroll-snap-align: center;
+  transition: opacity 0.5s var(--ease-smooth), transform 0.5s var(--ease-smooth);
+}
+.slide.is-offstage {
+  opacity: 0.35;
+  transform: scale(0.97);
+}
+
+/* ================= ③ 数字滚动 ================= */
+.count-up {
+  font-variant-numeric: tabular-nums;
+  font-weight: 800;
+}
+
+/* ================= ④ 实体按键手感:液态玻璃质感的按压反馈 ================= */
+.tactile-btn {
+  position: relative;
+  display: inline-flex; align-items: center; gap: 8px;
+  background: linear-gradient(180deg, var(--brand) 0%, var(--brand-deep) 100%);
+  color: #fff;
+  border: none;
+  border-radius: 12px;
+  padding: 12px 22px;
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow:
+    0 1px 0 rgba(255,255,255,0.35) inset,
+    0 4px 0 var(--brand-deep),
+    0 10px 18px -8px rgba(15,61,40,0.5);
+  transform: translateY(0);
+  transition: transform 0.12s var(--ease-snappy), box-shadow 0.12s var(--ease-snappy);
+}
+.tactile-btn:active {
+  transform: translateY(4px);
+  box-shadow:
+    0 1px 0 rgba(255,255,255,0.2) inset,
+    0 0 0 var(--brand-deep),
+    0 4px 10px -6px rgba(15,61,40,0.5);
+}
+
+/* ================= ⑤ 重点强调反馈:点一下,短促脉冲提示"这是要点" ================= */
+@keyframes emphasisPulse {
+  0%   { box-shadow: 0 0 0 0 rgba(0,146,62,0.45); }
+  70%  { box-shadow: 0 0 0 14px rgba(0,146,62,0); }
+  100% { box-shadow: 0 0 0 0 rgba(0,146,62,0); }
+}
+.tap-emphasis.is-pulsing {
+  animation: emphasisPulse 0.7s var(--ease-smooth);
+}
+
+/* ================= ⑥ 骨架屏:点击展开解法前的短暂过渡 ================= */
+.skeleton-line {
+  height: 14px;
+  border-radius: 6px;
+  margin-bottom: 8px;
+  background: linear-gradient(90deg, #eceae0 25%, #f6f5ee 37%, #eceae0 63%);
+  background-size: 400% 100%;
+  animation: skeletonShimmer 1.2s ease-in-out infinite;
+}
+.skeleton-line:last-child { width: 70%; }
+@keyframes skeletonShimmer {
+  0% { background-position: 100% 50%; }
+  100% { background-position: 0 50%; }
+}
+.reveal-content {
+  opacity: 0;
+  transition: opacity 0.4s var(--ease-smooth);
+}
+.reveal-content.is-shown { opacity: 1; }
+
+/* ================= ⑦ 打字机效果:标题逐字出现 =================
+   注意:不要用 CSS width 动画 + ch 单位来做这个效果——ch 是按"0"这个字符的宽度定义的,
+   中文字符实际宽度约是它的2倍,西文和中文混排时用 width+ch 会把文字硬切掉一截。
+   改用 JS 按字符数逐个 append 文本,不依赖任何字体宽度换算,中英文混排都不会错。 */
+.typewriter {
+  display: inline-block;
+  border-right: 3px solid rgba(255,255,255,0.75);
+  animation: typewriterCaret 0.8s steps(1) infinite;
+}
+@keyframes typewriterCaret { 50% { border-color: transparent; } }
+
+/* ================= ⑧ 完成仪式:课件最后一页的收束动画 ================= */
+.completion-check {
+  width: 84px; height: 84px;
+  margin: 0 auto 20px;
+}
+/* 默认是静止的"未画出"状态,不播放动画——只有滚到这一屏、JS 加上 .is-played 才开始画,
+   不然这个 SVG 一加载到 DOM 里就会立刻画完,起不到"到达终点才播放"的效果。 */
+.completion-check circle {
+  fill: none;
+  stroke: var(--brand-bright);
+  stroke-width: 4;
+  stroke-dasharray: 226;
+  stroke-dashoffset: 226;
+}
+.completion-check path {
+  fill: none;
+  stroke: var(--brand-bright);
+  stroke-width: 5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-dasharray: 40;
+  stroke-dashoffset: 40;
+}
+.completion-check.is-played circle {
+  animation: drawCircle 0.6s var(--ease-smooth) forwards;
+}
+.completion-check.is-played path {
+  animation: drawCheck 0.35s var(--ease-smooth) 0.55s forwards;
+}
+@keyframes drawCircle { to { stroke-dashoffset: 0; } }
+@keyframes drawCheck { to { stroke-dashoffset: 0; } }
+
+/* ================= ⑨ 品牌时刻:封面"开讲"——玻璃卡沿虚线裂开揭示内容 =================
+   关键教训(来自小程序项目的真实返工):动画结束后 CSS 属性会回到初始值,如果只靠
+   @keyframes 的终态、又在别处用 JS 或另一条动画写终态,两边会打架、弹回原位。
+   这里进一步吸取教训——终态不靠"祖先加一个类、指望后代选择器联动"这种间接链路,
+   而是由 JS 直接对目标元素本身写终态的行内样式(inline style 的优先级天然高于
+   任何样式表规则,不受选择器写法或层叠顺序影响),过渡效果由下面这些元素自带的
+   transition 声明负责,JS 只负责"改一次目标值",不负责怎么过渡。 */
+.brand-moment {
+  position: relative;
+}
+.brand-moment .seam {
+  position: absolute;
+  inset: 0;
+  border-top: 2px dashed rgba(255,255,255,0.55);
+  top: 50%;
+  transition: opacity 0.3s var(--ease-smooth);
+}
+.brand-moment .half-top,
+.brand-moment .half-bottom {
+  transition: transform 0.6s var(--ease-spring), opacity 0.6s var(--ease-smooth);
+}
+.brand-moment .reveal-cta {
+  opacity: 0;
+  transform: translateY(8px);
+  transition: opacity 0.4s var(--ease-smooth) 0.25s, transform 0.4s var(--ease-spring) 0.25s;
+  pointer-events: none;
+}
+
+/* ================= 质感层:液态玻璃卡片(背后必须有彩色光晕,否则模糊无物可折射) ================= */
+.glass-panel {
+  background: rgba(255,255,255,0.12);
+  backdrop-filter: blur(18px) saturate(160%);
+  -webkit-backdrop-filter: blur(18px) saturate(160%);
+  border: 1px solid rgba(255,255,255,0.24);
+  border-radius: 20px;
+  box-shadow: 0 8px 40px rgba(0,0,0,0.25), inset 0 1px 0 rgba(255,255,255,0.3);
+}
+/* 安卓低端机 / 不支持 backdrop-filter 的浏览器降级:半透明纯色+高光边,绝不留空白 */
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .glass-panel {
+    background: rgba(15,61,40,0.72);
+  }
+}
+
+/* ================= 质感层:液态药丸切换(过冲滑动) ================= */
+.liquid-pill {
+  position: relative;
+  display: inline-flex;
+  background: rgba(0,0,0,0.06);
+  border-radius: 999px;
+  padding: 4px;
+}
+.liquid-pill .pill-thumb {
+  position: absolute;
+  top: 4px; bottom: 4px;
+  border-radius: 999px;
+  background: var(--brand);
+  box-shadow: 0 3px 10px -3px rgba(15,61,40,0.5);
+  transition: transform 0.42s var(--ease-spring), width 0.42s var(--ease-spring);
+}
+.liquid-pill .pill-option {
+  position: relative;
+  z-index: 1;
+  padding: 8px 18px;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  color: var(--ink);
+  transition: color 0.25s var(--ease-smooth);
+  user-select: none;
+}
+.liquid-pill .pill-option.is-active { color: #fff; }
+
+/* ================= 质感层 ⑫:果冻融合菜单(黏连/gooey 效果) =================
+   原理:SVG filter 把 feGaussianBlur 模糊出的边缘,用 feColorMatrix 做高对比度阈值化,
+   两个圆形只要模糊后的范围有重叠,就会被"焊"成一个形状——这就是液滴黏连感的来源。
+   小程序项目里这个效果曾因为运行环境的 SVG filter 支持不稳定而搁置,但这里是标准浏览器环境
+   (讲义是给老师在电脑/投影上打开的网页,不是小程序沙箱),实测可以稳定渲染,所以在这里补上。
+
+   **定案用途:讲义右下角固定的"章节跳转"入口**(不是"更多操作"),点开后弹出几个跳转按钮,
+   点哪个就翻到对应页(封面/真题/文献……)。固定用 `.jelly-menu-fixed` 这个辅助类贴在右下角。
+
+   **关于"液态玻璃"和"果冻黏连"这两个效果本身有一点技术上的矛盾,老实说清楚**:
+   黏连效果的原理是把不透明的实心圆形模糊后再做阈值化处理,让边缘重新变锐利、互相"焊"在一起——
+   这套算法要求参与黏连的形状本身是**不透明的实心色块**,如果给按钮再叠加 `backdrop-filter`
+   做成半透明毛玻璃,会破坏阈值化需要的不透明前提,黏连效果会跟着变脏或直接失效。
+   所以这里不用 `backdrop-filter`,改用**渐变+内高光**做出"玻璃质感"(有光泽、有厚度、看起来像
+   一颗液态玻璃珠),而不是"透光看得到背后内容"那种真玻璃——这是两种不同的"像玻璃",这里选的是
+   前者,因为它和黏连效果不冲突,能同时保住"果冻感"和"有质感"两头。 */
+.jelly-menu {
+  position: relative;
+  width: 56px; height: 56px;
+  filter: url(#jelly-goo);
+}
+/* 用复合选择器(.jelly-menu-wrap.jelly-menu-fixed)而不是单独的 .jelly-menu-fixed,
+   是因为下面 .jelly-menu-wrap 自己的 position:relative 规则在源码顺序上更靠后,
+   两条规则特异度一样时后者会赢,单靠 .jelly-menu-fixed 这一个类选不过它,固定定位会被悄悄吃掉。
+   复合选择器的特异度更高,不管谁写在前面都能稳定生效。 */
+.jelly-menu-wrap.jelly-menu-fixed {
+  position: fixed;
+  right: 28px; bottom: 84px; /* 84px 是给底部翻页条(page-nav)让位置,避免两者叠在一起 */
+  z-index: 60;
+}
+.jelly-menu .jelly-main {
+  position: absolute; left: 0; top: 0;
+  width: 56px; height: 56px;
+  border-radius: 999px;
+  background: linear-gradient(155deg, rgba(255,255,255,0.55) 0%, var(--brand) 32%, var(--brand-deep) 100%);
+  border: none;
+  cursor: pointer;
+  z-index: 3;
+  box-shadow: 0 6px 16px -4px rgba(15,61,40,0.5), inset 0 1px 1px rgba(255,255,255,0.6);
+}
+.jelly-menu .jelly-option {
+  position: absolute; left: 8px; top: 8px;
+  width: 40px; height: 40px;
+  border-radius: 999px;
+  background: linear-gradient(155deg, rgba(255,255,255,0.5) 0%, var(--brand-deep, var(--brand)) 38%, var(--brand-deep, var(--brand)) 100%);
+  border: none;
+  cursor: pointer;
+  z-index: 2;
+  box-shadow: inset 0 1px 1px rgba(255,255,255,0.55);
+  transform: scale(0);
+  transition: transform 0.5s var(--ease-spring);
+}
+.jelly-menu-wrap.is-open .jelly-option:nth-of-type(1) { transform: translate(0, -66px) scale(1); }
+.jelly-menu-wrap.is-open .jelly-option:nth-of-type(2) { transform: translate(-57px, -33px) scale(1); }
+.jelly-menu-wrap.is-open .jelly-option:nth-of-type(3) { transform: translate(-57px, 33px) scale(1); }
+/* 图标和文字不参与黏连滤镜(否则也会被糊化),单独一层、不套 filter,絶对定位跟随按钮 */
+.jelly-menu-labels { position: relative; width: 56px; height: 56px; pointer-events: none; }
+.jelly-menu-labels span {
+  position: absolute; left: 8px; top: 8px; width: 40px; height: 40px;
+  border-radius: 999px; display: flex; align-items: center; justify-content: center;
+  font-size: 15px; color: #fff; opacity: 0; transform: scale(0);
+  transition: opacity 0.25s var(--ease-smooth) 0.2s, transform 0.5s var(--ease-spring);
+}
+.jelly-menu-labels span:nth-of-type(1) { transform: translate(0, -66px) scale(0); }
+.jelly-menu-labels span:nth-of-type(2) { transform: translate(-57px, -33px) scale(0); }
+.jelly-menu-labels span:nth-of-type(3) { transform: translate(-57px, 33px) scale(0); }
+.jelly-menu.is-open ~ .jelly-menu-labels span,
+.jelly-menu-wrap.is-open .jelly-menu-labels span {
+  opacity: 1;
+}
+.jelly-menu-wrap.is-open .jelly-menu-labels span:nth-of-type(1) { transform: translate(0, -66px) scale(1); }
+.jelly-menu-wrap.is-open .jelly-menu-labels span:nth-of-type(2) { transform: translate(-57px, -33px) scale(1); }
+.jelly-menu-wrap.is-open .jelly-menu-labels span:nth-of-type(3) { transform: translate(-57px, 33px) scale(1); }
+.jelly-menu-wrap { position: relative; display: inline-block; }
+.jelly-main-icon {
+  position: absolute; left: 0; top: 0; width: 56px; height: 56px;
+  display: flex; align-items: center; justify-content: center;
+  color: #fff; font-size: 22px; font-weight: 700; z-index: 4; pointer-events: none;
+  transition: transform 0.3s var(--ease-snappy);
+}
+.jelly-menu-wrap.is-open .jelly-main-icon { transform: rotate(45deg); }

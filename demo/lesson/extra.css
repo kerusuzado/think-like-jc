@@ -1,0 +1,6 @@
+/* 示范课专属（前缀 d1-） */
+.d1-fig .figwrap > svg{width:100%;height:auto;display:block}
+.d1-fig{padding:8px 10px}
+.d1-fig .figwrap,.q.solving .d1-fig .figwrap{width:100%}
+.q.d1-q{grid-template-columns:1fr 440px}
+#page-cover .cover-band .sub2{font-size:26px;letter-spacing:.1em;white-space:nowrap}
