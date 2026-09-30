@@ -21,8 +21,8 @@ else:
     sys.exit("找不到 brand.py：把 skill 装到 ~/.claude/skills/think-like-jc/，或设环境变量 TLJC_HOME=skill 目录")
 from brand import BRAND, head_html, cover_html, motto_wm_html   # noqa
 
-TOPIC = "第 1 课时　课题名"                     # 页眉右侧的短标题（≤ 22 字）
-KICK = {"intro": "节点① · 从哪来", "wrap": "节点⑤ · 易错与总结"}   # 章节 id → 右上角小标签，必须覆盖 chapters.js 里除 cover 外的所有 id
+TOPIC = "小测讲评　相遇与追及"                   # 页眉右侧的短标题（≤ 22 字）
+KICK = {"all":"成绩全景","ch":"第 1～5 题 · 选择","q6":"第 6、7 题 · 解答","wrap":"易错"}
 HEAD = head_html(TOPIC)
 
 def cover(chip, hero, sub, nodes, byline=None):

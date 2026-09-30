@@ -1,0 +1,455 @@
+/* ══ 讲评包（--pack review）：练习 / 考试讲评课通用件 ══
+   来源：五科「九上 9 月练习讲评」验收版（化学 / 物理 / 语文 / 英语 / 历史）里各科共用的那一层，
+   去掉学校专属色值，一律走令牌。前缀 jp-（讲评）/ h7-（速查卡逐张揭）。课件专属 class 仍要带本课前缀。 */
+
+/* ── 题页：得分率、选项分布 ── */
+.jp-nw{white-space:nowrap}
+.q-text .katex,.sol-steps .katex,.q-aside .katex,.jp-err .katex,.q-fig figcaption .katex{white-space:nowrap}
+.q.jp-q .sol-steps li{font-size:18.5px;line-height:1.7}
+.q.jp-q .q-text{font-size:17.5px;line-height:1.75}
+.q.jp-q.solving .q-text{font-size:16.5px}
+.q.jp-q .q-aside{padding:10px 14px;font-size:15.5px;line-height:1.6}
+.q.jp-q .q-aside > b:first-child{font-size:16px;margin-bottom:2px}
+.jp-rate{font-size:15px;color:var(--sub);margin-left:4px}
+.jp-rate b.jp-ok,.jp-ok{color:var(--green-d)}
+.jp-rate b.jp-low,.jp-low{color:var(--rose)}
+.jp-pick{display:flex;gap:5px;flex-wrap:wrap;font-size:13px;margin-top:3px}
+.jp-pick i{font-style:normal;background:#f6f1ec;border-radius:7px;padding:1px 8px;color:var(--sub)}
+.jp-pick i.ok{background:var(--brand-soft);color:var(--brand-deep);font-weight:700}
+.jp-pick b{font-variant-numeric:tabular-nums}
+
+/* ── 矢量图高亮组：SVG <g class="hl" data-k> 与 KaTeX 浮层标签都走同一个 .on 开关 ── */
+.jp-fig{padding:6px 10px}
+.jp-fig .figwrap,.q.solving .jp-fig .figwrap{width:100%;overflow:visible}
+.jp-fig .figwrap > svg{width:100%;height:auto;display:block;max-height:410px}
+.jp-fig g.hl{position:static;background:none;outline:none;opacity:0;transition:opacity .3s var(--ease)}
+.jp-fig g.hl.on{opacity:1}
+.jp-fig .ovl-i.hl,.jp-fig .figwrap.danger .ovl-i.hl.on,.jp-fig .figwrap.danger g.hl.on{background:none;outline:none;border-radius:0}
+.jp-fig .ovl-i.hl{opacity:0}
+.jp-fig .ovl-i.hl.on{opacity:1}
+.jp-fig figcaption{margin-top:2px;font-size:13.5px}
+.ovl-i.jp-lbl .katex{background:rgba(255,255,255,.88);padding:0 4px;border-radius:4px;font-size:1.25em;font-weight:700;color:var(--brand-deep)}
+.ovl-i.jp-lbl.jp-sm .katex{font-size:.95em}
+.ovl-i.jp-lbl.jp-tick .katex{font-size:.9em;font-weight:400;background:none;color:var(--sub)}
+.ovl-i.jp-amb .katex{color:var(--amber)}.ovl-i.jp-blue .katex{color:#2f6fa8}.ovl-i.jp-red .katex{color:var(--rose)}
+.ovl-i.jp-gray .katex{color:#6b756f;font-weight:400}.ovl-i.jp-grn .katex{color:var(--green-d)}
+.ovl-i.jp-left{transform:translate(0,-50%)!important}
+
+/* ── 成绩全景（review_lib.overview() 生成） ── */
+.jp-all{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+.jp-card{background:#fff;border:1px solid var(--line);border-radius:14px;padding:12px 16px;
+  box-shadow:0 1px 2px rgba(var(--deep-rgb),.05),0 6px 22px rgba(var(--deep-rgb),.06)}
+.jp-h{display:block;font-size:16px;color:var(--brand-deep)}
+.jp-note2{display:block;font-size:13px;color:var(--sub);margin-bottom:6px}
+.jp-bar{display:grid;grid-template-columns:96px 1fr 46px;gap:8px;align-items:center;font-size:15px;margin:5px 0}
+.jp-bar>i{position:relative;height:10px;border-radius:99px;background:#eef1ec}
+.jp-bar>i>b{position:absolute;inset:0 auto 0 0;border-radius:99px;background:color-mix(in srgb,var(--brand) 72%,white)}
+.jp-bar>i>u{position:absolute;top:-3px;bottom:-3px;width:1.5px;background:var(--brand-deep);opacity:.7}
+.jp-bar.jp-qb.low>i>b{background:color-mix(in srgb,var(--rose) 70%,white)}
+.jp-bar>em{font-style:normal;text-align:right;font-variant-numeric:tabular-nums;font-weight:600}
+.jp-bar.jp-qb.low>em{color:var(--rose)}
+.jp-qcols{display:grid;grid-template-columns:1fr 1fr;column-gap:18px}
+.jp-qcols .jp-bar{grid-template-columns:62px 1fr 44px}
+.jp-qcols.jp-q3{grid-template-columns:1fr 1fr 1fr;column-gap:14px}
+.jp-q3 .jp-bar{grid-template-columns:58px 1fr 40px;font-size:14px;margin:3px 0}
+
+/* ── 错在哪（学生原话，不带姓名）+ 记住这一类 ── */
+.jp-errs{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.jp-err{background:#fff;border:1px solid var(--line);border-left:4px solid var(--rose);border-radius:12px;padding:14px 18px;font-size:17.5px;line-height:1.75}
+.jp-eh{display:flex;align-items:center;gap:8px;margin-bottom:4px}
+.jp-eh b{font-size:19.5px}.jp-eh em{margin-left:auto;font-style:normal;color:var(--rose);font-size:14px}
+.jp-wn{font-style:normal;display:inline-grid;place-items:center;width:24px;height:24px;border-radius:50%;background:var(--rose);color:#fff;font-size:13px;font-weight:700}
+.jp-lb{display:inline-block;min-width:78px;font-style:normal;font-size:14px;color:var(--sub);font-weight:400}
+.jp-ew{color:#8a3b2b}.jp-er{color:var(--green-d);font-weight:600}
+.jp-keep{margin-top:14px;background:#fff;border:1px solid var(--line);border-left:5px solid var(--brand);border-radius:12px;padding:10px 16px;font-size:16.5px;line-height:1.7}
+.jp-keep b{color:var(--brand-deep);margin-right:8px}
+
+/* ── 实验台结论条三态：正常（绿）/ 复现了错误（红）/ 中性（灰） ── */
+.lab .ro-good.jp-bad{background:rgba(168,65,47,.08);border-left-color:var(--rose);color:#8a2f28}
+.lab .ro-good.jp-neutral{background:#f6f7f4;border-left-color:#b9c2bb;color:var(--sub);font-weight:400}
+.lab .presets button{min-width:54px}
+.lab .ro-line .v{white-space:nowrap}
+
+/* ── 本题错的人（隐私版名单：默认收起、全年级只报人数） ── */
+.jp-names{position:relative;display:flex;align-items:center;gap:8px;z-index:6}
+.jp-cls{font:inherit;font-size:14px;padding:5px 10px;border-radius:999px;border:1px solid #d7ddd4;background:rgba(255,255,255,.8);color:var(--ink)}
+.jp-show{font:inherit;font-size:14px;padding:5px 14px;border-radius:999px;border:1px solid rgba(var(--deep-rgb),.14);color:var(--brand-deep);cursor:pointer}
+.jp-names .jp-show.glassy.on,.jp-names .jp-show.glassy.on:hover{background:var(--brand);color:#fff;border-color:var(--brand)}
+.jp-list{position:absolute;top:42px;left:auto;right:0;width:660px;max-height:356px;overflow:auto;background:rgba(251,250,246,.97);
+  border:1px solid var(--line);border-radius:12px;padding:10px 12px;font-size:13.5px;box-shadow:0 10px 30px rgba(var(--deep-rgb),.16)}
+.jp-sum{color:var(--ink);margin-bottom:4px}.jp-sum span{color:var(--sub);font-size:12.5px;margin-left:6px}
+.jp-cnt{display:flex;flex-wrap:wrap;gap:6px}.jp-cnt>span{background:#eef1ec;border-radius:999px;padding:1px 9px}
+.jp-ppl{margin:0;padding:0;list-style:none;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:2px 10px}
+.jp-ppl>li{display:flex;gap:6px;align-items:baseline;white-space:nowrap;overflow:hidden}
+.jp-ppl>li>em{font-style:normal;color:var(--rose);font-variant-numeric:tabular-nums}
+.jp-ppl>li>i{font-style:normal;color:#9aa39d;font-size:12px;overflow:hidden;text-overflow:ellipsis}
+.jp-none{color:var(--green-d)}
+.jp-names.jp-top{position:absolute;right:12px;top:8px}
+
+/* ── 高得分率选择题速查卡：▶ 一张一张揭（H07） ── */
+.h7-key{display:flex;align-items:center;gap:12px;height:46px;background:#fff;border:1px solid var(--line);border-radius:12px;padding:0 16px;font-size:17px;margin-bottom:12px}
+.h7-key > b{color:var(--brand-deep);margin-right:6px}
+.h7-key .jp-names{margin-left:14px}
+.h7-key .jp-list{right:-8px;top:44px}
+.h7-kc{display:inline-flex;align-items:center;gap:6px}
+.h7-kc i{font-style:normal;font-weight:700;color:var(--sub)}
+.h7-kc em{font-style:normal;display:inline-block;min-width:38px;text-align:center;border-radius:7px;padding:2px 8px;font-weight:800;
+  background:repeating-linear-gradient(135deg,#eef1ec 0 6px,#f7f8f5 6px 12px);color:transparent;transition:all .3s var(--ease)}
+.h7-kc.open em{background:var(--brand-soft);color:var(--rose)}
+.h7-kh{margin-left:auto;font-size:14px;color:var(--sub)}
+.h7-cards{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;height:430px;margin-right:34px}
+.h7-card{background:#fff;border:1px solid var(--line);border-top:4px solid var(--brand);border-radius:13px;padding:10px 14px;display:flex;flex-direction:column;gap:6px;min-height:0;cursor:pointer;transition:box-shadow .3s var(--ease)}
+.h7-card.cur{box-shadow:0 0 0 3px rgba(250,204,21,.55),0 6px 18px rgba(0,0,0,.06)}
+.h7-ch{display:flex;align-items:center;gap:8px}
+.h7-ch .jp-rate{margin-left:auto;font-size:14px}
+.h7-no{font-size:19px;font-weight:800;color:var(--brand-deep)}
+.h7-stem{font-size:15.5px;line-height:1.55}
+.h7-opts{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:2px 6px;font-size:15px;line-height:1.45}
+.h7-opts2{grid-template-columns:1fr 1fr}
+.h7-opts1{grid-template-columns:1fr}
+.h7-sol{margin-top:auto;display:flex;flex-direction:column;gap:5px;opacity:0;transform:translateY(8px);transition:opacity .4s var(--ease),transform .4s var(--ease)}
+.h7-card.open .h7-sol{opacity:1;transform:none}
+.h7-ln{font-size:14.5px;line-height:1.5;border-radius:8px;padding:4px 9px;background:#f6f8f4}
+.h7-ln > b:first-child{display:inline-block;font-size:13px;color:#fff;background:var(--brand);border-radius:5px;padding:0 6px;margin-right:6px;vertical-align:1px}
+.h7-ln b{color:var(--brand-deep)}
+.h7-kf{background:#fff8e6}
+.h7-kf > b:first-child{background:var(--amber)}
+.h7-err{background:#fbeeea;color:#7a2d20}
+.h7-err > b:first-child{background:var(--rose)}
+.h7-err b{color:var(--rose)}
+.h7-mini{display:block;max-height:92px;width:auto;max-width:100%;margin:2px auto}
+
+/* ── 文本图（原文 / 材料 / 范文当"图"用）：.jp-fig.jp-text 里
+      .hl.th = 句子高亮（步进时底色变黄；易错步变红）；.hl.tr = 按步现身（批注、答案格） ── */
+.jp-fig.jp-text .figwrap{text-align:left;font-size:15px;line-height:1.6;color:var(--ink)}
+.jp-fig.jp-text figcaption{text-align:center}
+.jp-text .figwrap .th.hl{position:static;outline:none;opacity:1;background:transparent;border-radius:5px;transition:background .3s var(--ease),box-shadow .3s var(--ease)}
+.jp-text .figwrap .th.hl.on{background:rgba(250,204,21,.42);box-shadow:0 0 0 2px rgba(202,138,4,.5)}
+.jp-text .figwrap.danger .th.hl.on{background:rgba(193,68,59,.13);box-shadow:0 0 0 2px rgba(193,68,59,.6)}
+.jp-text .figwrap .tr.hl{position:static;outline:none;background:transparent;opacity:0;transition:opacity .35s var(--ease)}
+.jp-text .figwrap .tr.hl.on{opacity:1}
+.jp-text > .zoom-btn{top:auto;bottom:6px;right:8px}
+/* 跟题运镜：点亮哪一句，原文区就推到哪一句并放大，其余压暗（JS 自动包一层 .jp-camz） */
+.jp-fig .figwrap.jp-cam{overflow:hidden;position:relative}
+.jp-camz{transform-origin:0 0;transition:transform .6s var(--ease)}
+/* 只压暗「常显」的 .th；.tr / g.hl 未到步本来就是 0，压暗规则绝不能碰它们（语文课 18a/19/21 页就是这样让没到步的答案以 .42 透明度露出来、叠成乱码） */
+.jp-cam.focus .jp-camz .th.hl:not(.on){opacity:.42;transition:opacity .4s}
+/* 可点的控件（观点按钮、换一换）放在 .figwrap 外面：运镜会把 figwrap 里的一切连同按钮推出画面 */
+.jp-fig .figwrap .jp-camz > svg{width:100%;height:auto;display:block;max-height:410px}
+
+/* ── 逐条揭：.jp-seq 里的 .jp-si 按 ▶ 一条一条揭（默写答案、升格对照、要点清单） ── */
+.jp-si{transition:opacity .35s var(--ease),box-shadow .3s var(--ease)}
+.jp-seq .jp-si:not(.open) .jp-sa{opacity:0}
+.jp-si .jp-sa{transition:opacity .35s var(--ease)}
+.jp-si.cur{box-shadow:0 0 0 3px rgba(250,204,21,.55)}
+
+/* ── 点选看依据：.jp-chipbar 的按钮（data-k）点亮同一 .figwrap 里的 .hl；data-note 有值 = 错误观点，提示条变红 ── */
+.jp-chipbar{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px}
+.jp-chipbar button,.jp-fb button{font:inherit;font-size:15px;padding:4px 10px;border-radius:999px;border:1px solid #cfd8d2;background:#fff;cursor:pointer;color:var(--ink)}
+.jp-chipbar button:hover,.jp-fb button:hover{border-color:var(--brand)}
+.jp-chipbar button.on,.jp-fb button.on{background:var(--brand);color:#fff;border-color:var(--brand)}
+.jp-chipbar button.bad{border-style:dashed;color:#8a3b2b}
+.jp-chipbar button.bad.on{background:var(--rose);border-color:var(--rose);color:#fff}
+.jp-cnote{margin-top:8px;font-size:14.5px;color:var(--sub);min-height:23px}
+.jp-cnote.bad{color:var(--rose);font-weight:700}
+
+/* ── 换一换：.jp-fix 里点一组候选（data-a="甲|乙" data-ok="1|0" data-m="提示"），换进句中的 .jp-slot ── */
+.jp-fix{margin-top:10px;border:1px dashed #cbd5d0;border-radius:12px;padding:10px 12px;background:#fafbf9}
+.jp-slot{display:inline-block;min-width:2.6em;text-align:center;padding:0 6px;margin:0 3px;border-radius:7px;background:#fdf1cd;color:#7a5510;font-weight:700;border:1.5px solid #e0c56e}
+.jp-slot.ok{background:#effaf3;color:#14532d;border-color:#22c55e}
+.jp-slot.bad{background:#fbeee9;color:#8a2f28;border-color:var(--rose);animation:jpShake .4s}
+@keyframes jpShake{25%{transform:translateX(-5px)}75%{transform:translateX(5px)}}
+.jp-fb{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:8px}
+.jp-fm{min-height:24px;margin-top:6px;font-size:15px;color:var(--sub)}
+.jp-fm.ok{color:var(--green-d);font-weight:700}
+.jp-fm.bad{color:var(--rose);font-weight:700}
+
+/* ══ RD：原文 + 逐题讲解（阅读 / 完形 / 语法选择 / 材料题通用）══
+   每题两拍：「问」只出题；「答」揭答案、各选项人数、原文证据 .hl.ev 变黄、偷换处 .hl.bad 红波浪线；点选项可试。 */
+.en-f,.rd-psg,.rd-o span,.rd-qh span,.ck-model,.up-a,.up-b,.cap,.pv-f b,.pv-b b{font-family:"Times New Roman",Georgia,"Songti SC",serif}
+.rd{display:grid;grid-template-columns:712px 1fr;gap:18px;height:486px}
+.rd-psg{position:relative;background:#fff;border:1px solid var(--line);border-radius:14px;padding:12px 18px;font-size:16px;line-height:1.6;color:#1f2430;overflow:hidden;box-shadow:0 1px 2px rgba(var(--deep-rgb),.05)}
+.rd-psg h4{margin:0 0 4px;font-size:16px;text-align:center;color:var(--brand-deep)}
+.rd-psg p{margin:0 0 5px;text-indent:1.6em}
+.rd-psg.psg-sm{font-size:15px;line-height:1.52}
+.rd-psg.psg-xs{font-size:14px;line-height:1.46}
+.rd-psg.psg-md{font-size:15.5px;line-height:1.58}
+.rd-psg.psg-lg{font-size:18px;line-height:1.9}
+.rd-psg.psg-lg p{margin-bottom:12px}
+/* 原文高亮：证据变黄、偷换处红波浪线 */
+.rd .hl,.ck-wrap .hl{position:static;display:inline;opacity:1;background:none;outline:none;border-radius:3px;transition:background .3s var(--ease),box-shadow .3s var(--ease);box-decoration-break:clone;-webkit-box-decoration-break:clone}
+.rd .hl.ev.on,.ck-wrap .hl.ev.on{background:rgba(250,204,21,.55);box-shadow:0 0 0 2px rgba(250,204,21,.55)}
+.rd .hl.bad.on{text-decoration:underline wavy #C1443B 2px;text-underline-offset:4px;background:rgba(193,68,59,.08);color:#8a2f28}
+.rd-o .hl.bad.on{text-decoration-thickness:1.6px}
+/* 空格 */
+.rd-bl{display:inline-flex;align-items:center;gap:3px;min-width:58px;padding:0 6px;margin:0 2px;border-bottom:1.6px solid #2b3230;line-height:1.2;vertical-align:baseline;text-indent:0}
+.rd-bl i{font-style:normal;font-size:.72em;color:#6b756f;font-family:system-ui,sans-serif}
+.rd-bl b{font-weight:700;color:#1f7a4d;opacity:0;max-width:0;overflow:hidden;white-space:nowrap;transition:opacity .3s,max-width .4s}
+.rd-bl.fill b{opacity:1;max-width:200px}
+.rd-bl.fill i{display:none}
+.rd-bl.cur{background:rgba(250,204,21,.28);border-radius:4px 4px 0 0;box-shadow:0 0 0 2px rgba(224,165,38,.6)}
+/* 右栏 */
+.rd-side{display:flex;flex-direction:column;gap:8px;min-width:0;height:486px}
+.rd-top{display:flex;align-items:center;gap:8px}
+.rd-tabs{display:flex;gap:4px;flex-wrap:wrap;flex:1;min-width:0}
+.rd-tab{font:inherit;font-size:13px;font-weight:700;min-width:30px;height:28px;padding:0 6px;border-radius:8px;border:1px solid #dfe4df;background:#fff;color:#6b756f;cursor:pointer}
+.rd-tab.done{background:var(--brand-soft);color:var(--brand-deep);border-color:#cfe6d8}
+.rd-tab.cur{background:var(--brand);color:#fff;border-color:var(--brand)}
+.rd-top .jp-names{flex:none}
+.rd-top .jp-cls{font-size:13px;padding:4px 6px;max-width:92px}
+.rd-top .jp-show{font-size:13px;padding:4px 10px}
+.rd-top .jp-list{left:auto;right:0;width:620px}
+.rd-card{flex:1;min-height:0;display:flex;flex-direction:column;gap:7px;background:#fff;border:1px solid var(--line);border-top:4px solid var(--brand);border-radius:13px;padding:10px 14px;overflow:hidden}
+.rd-qh{display:flex;align-items:flex-start;gap:8px;font-size:16.5px;line-height:1.45}
+.rd-qh span{flex:1;font-weight:600}
+.rd-qh .jp-rate{flex:none;font-size:13px;white-space:nowrap;font-family:inherit;font-weight:400}
+.rd-opts{display:flex;flex-direction:column;gap:4px}
+.rd-o{font:inherit;display:flex;align-items:center;gap:8px;text-align:left;padding:4px 10px;border-radius:9px;border:1px solid #e4e8e3;background:#fafbf9;cursor:pointer;font-size:15px;line-height:1.35;color:var(--ink)}
+.rd-o:hover{border-color:#b9cfc1}
+.rd-o>i{flex:none;font-style:normal;font-weight:800;color:#6b756f;width:16px}
+.rd-o>span{flex:1}
+.rd-o>em{flex:none;font-style:normal;font-size:12.5px;color:#9a7066;opacity:0;transition:opacity .3s;font-variant-numeric:tabular-nums}
+.rd-card[data-st=ans] .rd-o>em{opacity:1}
+.rd-card[data-st=ans] .rd-o.ok{background:#eaf6ee;border-color:#8fcca6}
+.rd-card[data-st=ans] .rd-o.ok>i,.rd-card[data-st=ans] .rd-o.ok>em{color:#1f7a4d;font-weight:800}
+.rd-o.pick{box-shadow:0 0 0 2px rgba(193,68,59,.55)}
+.rd-o.ok.pick{box-shadow:0 0 0 2px rgba(34,197,94,.6)}
+.rd-let{flex-direction:row;flex-wrap:wrap}
+.rd-let .rd-o{flex:0 0 auto;min-width:54px;justify-content:center;padding:4px 8px;flex-direction:column;gap:0}
+.rd-let .rd-o>span{display:none}
+.rd-let .rd-o>i{width:auto;font-size:16px}
+.rd-ex{font-size:15.5px;line-height:1.62;background:#f6f8f4;border-radius:9px;padding:7px 11px;opacity:0;transform:translateY(6px);transition:opacity .35s var(--ease),transform .35s var(--ease)}
+.rd-card[data-st=ans] .rd-ex{opacity:1;transform:none}
+.rd-card:has(.rd-msg.on) .rd-ex{display:none}
+.rd-msg{display:none;font-size:15.5px;line-height:1.6;border-radius:9px;padding:7px 11px}
+.rd-msg.on{display:block}
+.rd-msg.good{background:#eaf6ee;color:#1f6b45}
+.rd-msg.bad{background:#fbeeea;color:#7a2d20}
+.rd-wf .rd-card{gap:5px}
+.rd-wf .rd-ex{font-size:15px;line-height:1.55;padding:6px 10px}
+.rd-psg.psg-xs:has(.pst){padding:10px 12px}
+.rd-mt .rd-let .rd-o{min-width:44px}
+.rd-card[hidden]{display:none !important}
+.rd-qh>b{flex:none;display:inline-grid;place-items:center;min-width:32px;height:26px;border-radius:7px;background:var(--brand-deep);color:#fff;font-size:15px}
+.rd-qh .jp-rate b{font-weight:700}
+.rd{position:relative}
+.rd-top .jp-names{position:absolute;right:0;top:-50px}
+.page:has(.rd) .page-kicker{visibility:hidden}
+.rd-psg.psg-sm{font-size:14.6px;line-height:1.5}
+.rd-psg.psg-sm p{margin-bottom:4px}
+.rd:not(.rd-wf) .rd-qh{font-size:17px}
+.rd:not(.rd-wf) .rd-o{font-size:16px;padding:5px 10px}
+.rd:not(.rd-wf) .rd-ex,.rd:not(.rd-wf) .rd-msg{font-size:16px}
+.rd-psg.psg-lg{font-size:17.5px;line-height:1.85}
+/* 跟题运镜（09-28）：放大到约 28 号字的观感，依据句之外变淡 */
+.rd-psg{transition:font-size .34s var(--ease),line-height .34s var(--ease);scrollbar-width:none}
+.rd-psg::-webkit-scrollbar{display:none}
+/* 运镜放大必须赢过任何字号档；原文字号只许用 psg-* 四档，禁止 #page-xx .rd-psg 按页改字号（英语课 ra/rf/sa 三页就是这样让运镜失效的） */
+.rd .rd-psg.zoom,.rd .rd-psg.zoom[class*="psg-"]{font-size:21px!important;line-height:1.62!important}
+.rd-psg.focus{color:rgba(31,36,48,.36)}
+.rd-psg.focus .hl.on,.rd-psg.focus h4{color:#1f2430}
+.rd-psg.focus .hl.bad.on{color:#8a2f28}
+body.fz-1 .rd,body.fz-2 .rd{grid-template-columns:minmax(0,1fr)!important;height:auto!important}
+body.fz-1 .rd-psg,body.fz-2 .rd-psg{max-height:none;height:auto}
+
+/* ── 行内关键词黄底 ── */
+.kk{background:#fdf1cd;color:#6d520c;border-radius:4px;padding:0 4px;font-family:"Times New Roman",Georgia,serif}
+
+/* ── 胶囊：默认绿=要记的搭配 · .x 红删除线=错写法 · .n 黄=时间/年份 · .p 蓝=补充表达 · .w 红=问句核心 · .b 灰蓝=框架 ── */
+/* 胶囊 */
+.cap{display:inline-block;border-radius:999px;padding:0 9px;margin:1px 0;font-weight:700;line-height:1.5;background:#e2f3e8;color:#16603a;border:1px solid #b9dfc7;white-space:nowrap}
+.cap.n{background:#fdf1cd;color:#7a5c10;border-color:#efd896}
+.cap.p{background:#e3eefa;color:#1f5b93;border-color:#bcd4ee}
+.cap.b{background:#eef0f6;color:#3b4a6b;border-color:#d3d9e7;font-weight:600}
+.cap.x{background:#fbe6e1;color:#9a2f22;border-color:#f0c2b8;text-decoration:line-through;text-decoration-color:rgba(154,47,34,.6)}
+.up .cap{font-size:15px}
+.cap.w{background:#fbe6e1;color:#9a2f22;border-color:#f0c2b8}
+
+/* ── 题多（>30 个小问）时的得分率热力格 ── */
+.hm{display:grid;gap:5px}
+.hm-row{display:grid;grid-template-columns:92px 1fr;align-items:center;gap:8px}
+.hm-nm{font-size:14px;font-weight:700;color:var(--brand-deep);line-height:1.2}
+.hm-nm em{display:block;font-style:normal;font-weight:400;font-size:12px;color:#6b756f}
+.hm-cells{display:flex;flex-wrap:wrap;gap:4px}
+.hm-cells i{font-style:normal;width:48px;height:38px;border-radius:7px;display:flex;flex-direction:column;align-items:center;justify-content:center;line-height:1.1;
+  background:color-mix(in srgb,#1f7a4d calc((100 - var(--r)) * 1.1%),#f2f8f3);color:#10301f}
+.hm-cells i b{font-size:13px}
+.hm-cells i em{font-style:normal;font-size:11.5px}
+.hm-cells i.low{outline:2.5px solid #c2553f;outline-offset:-2px;background:color-mix(in srgb,#c2553f calc((100 - var(--r)) * 1%),#fff)}
+
+/* ── 翻卡：正面原句 / 背面 字面·意思·为什么 ── */
+/* 俗语卡 */
+.pv-top{display:flex;align-items:center;gap:10px;font-size:15px;color:#4b5650;margin-bottom:10px}
+.pv-top .jp-names{margin-left:auto}
+.pv-top .jp-list{left:auto;right:0;width:620px}
+.pv-wrap{display:grid;grid-template-columns:repeat(5,1fr);gap:12px;height:356px;perspective:1200px}
+.pv{cursor:pointer}
+.pv-in{position:relative;width:100%;height:100%;transition:transform .6s var(--ease);transform-style:preserve-3d}
+.pv.flip .pv-in{transform:rotateY(180deg)}
+.pv-f,.pv-b{position:absolute;inset:0;backface-visibility:hidden;-webkit-backface-visibility:hidden;border-radius:14px;padding:12px 12px;display:flex;flex-direction:column;gap:8px;background:#fff;border:1px solid var(--line);box-shadow:0 2px 10px rgba(var(--deep-rgb),.06)}
+.pv-b{transform:rotateY(180deg)}
+.pv-f>em,.pv-b>em{font-style:normal;font-size:13.5px;font-weight:700;color:#6b756f}
+.pv-f b,.pv-b b{font-size:17.5px;line-height:1.35}
+.pv-ic{width:100%;height:auto}
+.pv-tap{margin-top:auto;font-size:12.5px;color:#9aa39d;text-align:center}
+.pv-lit{font-size:14.5px;color:#4b5650;line-height:1.5}
+.pv-mean{font-size:16px;font-weight:700;line-height:1.5;color:var(--brand-deep)}
+.pv-why{margin-top:auto;font-size:14px;line-height:1.5;border-radius:8px;padding:6px 9px}
+.pv.pv-ok .pv-b{border-top:4px solid #1f7a4d}
+.pv.pv-ok .pv-why{background:#eaf6ee;color:#1f6b45}
+.pv.pv-no .pv-b{border-top:4px solid #c2553f}
+.pv.pv-no .pv-why{background:#fbeeea;color:#7a2d20}
+.pv[data-k=orig] .pv-f{border-top:4px solid #e0a526}
+.pv[data-k=orig] .pv-b{border-top:4px solid #e0a526;background:#fffcf2}
+.pv.cur .pv-b{box-shadow:0 0 0 3px rgba(250,204,21,.6)}
+.pv-keep{margin-right:70px}
+
+/* ── 作文 / 主观题要点勾选表：勾一项加一项分，点一行范文对应句变黄 ── */
+/* 勾选表 */
+.ck-wrap{display:grid;grid-template-columns:560px 1fr;gap:18px;height:486px}
+.ck-l{display:flex;flex-direction:column;gap:6px}
+.ck-sec{background:#fff;border:1px solid var(--line);border-left:4px solid #cfd8d2;border-radius:11px;padding:4px 12px;transition:box-shadow .3s,border-color .3s}
+.ck-sec.cur{border-left-color:#e0a526;box-shadow:0 0 0 3px rgba(250,204,21,.45)}
+.ck-h{display:flex;align-items:baseline;gap:8px}
+.ck-h b{font-size:16px;color:var(--brand-deep)}
+.ck-h em{margin-left:auto;font-style:normal;font-size:12.5px;color:#c2553f}
+.ck-row{display:grid;grid-template-columns:20px 1fr auto;align-items:center;gap:6px;font-size:14.5px;line-height:1.45;padding:1px 4px;border-radius:6px;cursor:pointer}
+.ck-row:hover,.ck-row.sel{background:#fdf6df}
+.ck-row input{width:16px;height:16px;accent-color:var(--brand)}
+.ck-row i{font-style:normal;font-size:12.5px;color:#6b756f}
+.ck-sum{display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:10px;background:#fff;border:1px solid var(--line);border-radius:11px;padding:6px 12px;font-size:15px}
+.ck-sum>i{height:10px;border-radius:99px;background:#eef1ec;position:relative}
+.ck-sum>i>b{position:absolute;inset:0 auto 0 0;width:0;border-radius:99px;background:#1f7a4d;transition:width .3s}
+.ck-sum>b{font-size:19px;color:var(--brand-deep);font-variant-numeric:tabular-nums}
+.ck-r{display:flex;flex-direction:column;gap:8px;min-width:0}
+.ck-rh{display:flex;align-items:center;gap:10px}
+.ck-rh>b{font-size:17px;color:var(--brand-deep)}
+.ck-rh .jp-names{margin-left:auto}
+.ck-rh .jp-list{left:auto;right:0;width:620px}
+.ck-model{background:#fff;border:1px solid var(--line);border-radius:14px;padding:14px 18px;font-size:18px;line-height:1.75;text-indent:1.6em}
+.ck-note{font-size:14px;line-height:1.6;color:#4b5650;background:#f6f8f4;border-radius:10px;padding:8px 12px;margin-right:60px}
+.ck-sum{margin-right:60px}
+.ck-row{font-size:14.5px;line-height:1.4}
+
+/* ── 升格对照：原句 → 升格句 → 为什么 ── */
+/* 升格 */
+.up-top{display:flex;align-items:center;gap:10px;font-size:15px;color:#4b5650;margin-bottom:10px}
+.up-top .jp-names{margin-left:auto}
+.up-top .jp-list{left:auto;right:0;width:620px}
+.up-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-right:0}
+.up{background:#fff;border:1px solid var(--line);border-radius:12px;padding:7px 14px}
+.up-h{display:flex;align-items:baseline;gap:8px;margin-bottom:3px}
+.up-h b{font-size:15.5px;color:var(--brand-deep)}
+.up-h em{margin-left:auto;font-style:normal;font-size:12.5px;color:#c2553f}
+.up-a,.up-b{display:flex;flex-wrap:wrap;align-items:center;gap:4px;font-size:16px;line-height:1.55}
+.up-a>i,.up-b>i{font-style:normal;flex:none;font-size:12px;border-radius:5px;padding:0 6px;margin-right:4px;font-family:system-ui,sans-serif}
+.up-a>i{background:#fbe6e1;color:#9a2f22}
+.up-b>i{background:#e2f3e8;color:#16603a}
+.up-a{color:#6b4a44}
+.up-w{font-size:13.5px;color:#4b5650;margin-top:2px}
+.up-a,.up-b{display:block}
+.up-a>i,.up-b>i{display:inline-block}
+
+/* ── 通用逐个现：.st-wrap > .st（没到的卡是淡影，版面不跳） ── */
+.st{opacity:.12;transition:opacity .4s var(--ease),box-shadow .3s}
+.st.shown{opacity:1}
+.st.cur{box-shadow:0 0 0 3px rgba(250,204,21,.55)}
+
+/* ── 原文底部的方法条 ── */
+.psg-foot{margin-top:14px;border-top:1px dashed #d6ddd7;padding-top:10px;display:grid;gap:6px;font-family:system-ui,-apple-system,"PingFang SC",sans-serif;font-size:15px;line-height:1.5;color:#3d4a43}
+.psg-foot>b{color:var(--brand-deep);font-size:15.5px}
+.psg-foot i{font-style:normal;display:inline-grid;place-items:center;width:20px;height:20px;border-radius:50%;background:var(--brand);color:#fff;font-size:12px;margin-right:6px}
+
+/* ── 主观题：学生写的 + 没拿满人数 ── */
+.sa-st{margin-top:8px;font-size:15px;line-height:1.5;background:#fbeeea;border-radius:8px;padding:5px 10px;color:#6b2a20;font-family:"Times New Roman",Georgia,serif}
+.sa-st>i{font-style:normal;font-size:12px;background:#fbe0da;color:#9a2f22;border-radius:5px;padding:0 6px;margin-right:6px;font-family:system-ui,sans-serif}
+.sa-st u{text-decoration:underline wavy #C1443B 1.5px;text-underline-offset:3px}
+.sa-st>em{display:block;font-style:normal;font-size:12.5px;color:#9a7066;font-family:system-ui,sans-serif}
+.sa-n{margin-top:6px;font-size:13px;color:#c2553f}
+
+/* ══ 主观题得分块：把答案拆成独立给分的块，学生原话逐块判 ══
+   .jp-blocks > .jp-blk.th.hl[data-k]（i 块名 + em 分值 / b 内容）；
+   .jp-stack > .jp-smp.tr.hl[data-k]（几条原话叠在同一格，每步只亮一条，不占额外高度）
+     > .jp-sq（i 学生原话）+ .jp-sm > .jp-mk.ok|miss|bad（b 块名 + 判语）+ .jp-got（得 <b>1</b> / 3 分） */
+.jp-stack{display:grid}
+.jp-stack>*{grid-area:1/1}
+.jp-blocks{display:flex;gap:8px;margin-top:8px}
+.jp-blk{flex:1;min-width:0;border:1.5px solid #d7ddd4;border-radius:11px;padding:5px 10px;background:#fff}
+.jp-blk i{display:flex;justify-content:space-between;font-style:normal;font-size:13.5px;color:var(--brand-deep);font-weight:700}
+.jp-blk i em{font-style:normal;font-weight:400;color:var(--sub)}
+.jp-blk b{display:block;font-size:14.5px;line-height:1.45;font-weight:600}
+.jp-indep{margin-top:6px;font-size:13.5px;color:#7a5510;text-align:center}
+.jp-smp{margin-top:8px;background:#fff;border:1px solid #e8e2d6;border-left:4px solid var(--rose);border-radius:10px;padding:6px 10px}
+.jp-sq{font-size:14.5px;line-height:1.55;color:#8a3b2b}
+.jp-sq i{font-style:normal;font-size:12.5px;color:#fff;background:#8a8f8b;border-radius:5px;padding:0 6px;margin-right:6px;vertical-align:1px}
+.jp-sm{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-top:5px}
+.jp-mk{font-size:13.5px;border-radius:999px;padding:1px 10px}
+.jp-mk b{margin-right:4px}
+.jp-mk.ok{background:#effaf3;color:#14532d}
+.jp-mk.miss{background:#fff;color:#8a2f28;border:1.5px dashed var(--rose)}
+.jp-mk.bad{background:#fbeee9;color:#8a2f28}
+.jp-got{margin-left:auto;font-size:14px;color:var(--sub)}
+.jp-got b{color:var(--rose);font-size:17px}
+
+/* ══ 对照表：.jp-rv > table.jp-cmp > tr.rv-i（首列常显，其余列 ▶ 一行一行揭；.key = 本课重点行浅黄；末列红字写「本卷怎么错」） ══ */
+.jp-rv{display:flex;flex-direction:column;gap:10px}
+table.jp-cmp{width:100%;border-collapse:separate;border-spacing:0;background:#fff;border:1px solid var(--line);border-radius:14px;overflow:hidden;font-size:16px;line-height:1.5}
+table.jp-cmp th{background:#eef3ee;color:var(--brand-deep);font-size:14.5px;text-align:left;padding:8px 12px;border-bottom:1px solid var(--line)}
+table.jp-cmp td{padding:8px 12px;border-bottom:1px solid #eef0ec;vertical-align:middle}
+table.jp-cmp tr:last-child td{border-bottom:none}
+table.jp-cmp td:first-child{white-space:nowrap;font-size:17px}
+table.jp-cmp tr.rv-i{cursor:pointer}
+table.jp-cmp tr.rv-i td:not(:first-child){color:transparent;background:repeating-linear-gradient(135deg,#f4f5f2 0 7px,#fafbf8 7px 14px);transition:color .35s var(--ease),background .35s var(--ease)}
+table.jp-cmp tr.rv-i td:not(:first-child) *{visibility:hidden}
+table.jp-cmp tr.rv-i.open td:not(:first-child){color:var(--ink);background:#fff}
+table.jp-cmp tr.rv-i.open td:not(:first-child) *{visibility:visible}
+table.jp-cmp tr.rv-i.open.key td{background:#fff8e6}
+table.jp-cmp tr.rv-i.cur td{box-shadow:inset 0 2px 0 rgba(250,204,21,.7),inset 0 -2px 0 rgba(250,204,21,.7)}
+table.jp-cmp td.jp-bad{font-size:14px;color:#8a3b2b}
+.jp-pg{display:inline-block;background:#eef3ee;color:var(--brand-deep);border-radius:6px;padding:0 7px;font-size:13.5px;white-space:nowrap}
+
+/* ══ 选项逐项核对（材料型选择题）：材料三色 + 每个选项一行，▶ 逐项划掉或圈出
+   .jp-jo > .jp-jo-mat(span.th.hl.cb|co|cg) + .jp-jo-row > b.jp-jo-l + .jp-jo-t(.jp-jo-tx > i.tr.hl.jp-jo-x|jp-jo-ring, em.tr.hl.jp-jo-tag(.ok)) + .jp-jo-n
+   判语只用四种：材料没说 / 与材料矛盾 / 只说一半 / 说了 ✓ ══ */
+.jp-jo{display:flex;flex-direction:column;gap:7px;text-align:left;padding:2px 2px 4px}
+.jp-jo-mat{font-size:15px;line-height:1.75;background:#fbf6ec;border:1px solid #eadcbf;border-radius:10px;padding:8px 12px;color:#3d372b}
+.jp-jo .th.hl.cb.on{background:rgba(96,165,250,.34);box-shadow:0 0 0 2px rgba(96,165,250,.34)}
+.jp-jo .th.hl.co.on{background:rgba(251,146,60,.30);box-shadow:0 0 0 2px rgba(251,146,60,.30)}
+.jp-jo-row{display:grid;grid-template-columns:26px 1fr 52px;align-items:center;gap:6px;background:#fff;border:1px solid var(--line);border-radius:10px;padding:6px 10px;font-size:16px;line-height:1.5}
+.jp-jo-l{display:grid;place-items:center;width:24px;height:24px;border-radius:50%;background:#eef1ec;color:var(--brand-deep);font-size:14px}
+.jp-jo-t{position:relative;display:block;padding-right:4px}
+.jp-jo-tx{position:relative;display:inline}
+.jp-jo-n{font-size:12.5px;color:var(--sub);text-align:right;font-variant-numeric:tabular-nums}
+.jp-jo .hl.jp-jo-x{position:absolute;left:-2px;right:-2px;top:50%;height:2.6px;background:#C1443B!important;border-radius:2px;transform-origin:left;transform:scaleX(0);opacity:1;transition:transform .45s var(--ease)}
+.jp-jo .hl.jp-jo-x.on{transform:scaleX(1)}
+.jp-jo .hl.jp-jo-ring{position:absolute;inset:-5px -8px;border:2.5px solid #16a34a;border-radius:9px;background:rgba(34,197,94,.10)!important;opacity:0}
+.jp-jo .hl.jp-jo-ring.on{opacity:1}
+.jp-jo .hl.jp-jo-tag{position:static;display:inline-block;margin-left:8px;font-style:normal;font-size:12.5px;font-weight:700;color:#fff;background:#C1443B!important;padding:0 8px;border-radius:999px;vertical-align:1px;opacity:0}
+.jp-jo .hl.jp-jo-tag.ok{background:#16a34a!important}
+.jp-jo .hl.jp-jo-tag.on{opacity:1}
+
+/* ══ 分拣台：学生原话分进几个框。.jp-sort > .jp-pool > button.jp-chip[data-b][data-i] ；
+   .jp-bins > .jp-bin[data-b][data-why][data-hint](.ok = 给分的框) > b(框名 em 说明) + .jp-in ；.jp-smsg ；全放完才出现 .reveal-after ══ */
+.jp-sort{display:flex;flex-direction:column;gap:10px}
+.jp-pool{display:flex;flex-wrap:wrap;gap:8px;min-height:92px;background:#fff;border:1px dashed #cfd8d2;border-radius:14px;padding:8px 12px;align-content:flex-start}
+.jp-pool > i{flex-basis:100%;font-style:normal;font-size:13.5px;color:var(--sub)}
+.jp-chip{font:inherit;font-size:15.5px;line-height:1.45;text-align:left;padding:5px 12px;border-radius:12px;border:1px solid #d7ddd4;background:#fbfaf6;cursor:pointer;max-width:100%;transition:transform .2s,box-shadow .2s}
+.jp-chip.sel{box-shadow:0 0 0 3px rgba(250,204,21,.7);background:#fffbea}
+.jp-chip.bad{animation:jpShake .4s;border-color:var(--rose)}
+.jp-chip.done{cursor:default}
+.jp-bins{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.jp-bin{background:#fbeeea;border:2px solid #e7b9ad;border-radius:14px;padding:8px 12px;min-height:170px;cursor:pointer}
+.jp-bin.ok{background:#effaf3;border-color:#9fd3b1}
+.jp-bin > b{display:block;font-size:17px;color:#8a3b2b}
+.jp-bin.ok > b{color:#1f6b45}
+.jp-bin > b em{display:block;font-style:normal;font-weight:400;font-size:13.5px;color:var(--sub)}
+.jp-in{display:flex;flex-direction:column;gap:6px;margin-top:6px}
+.jp-in .jp-chip{background:#fff}
+.jp-smsg{min-height:24px;font-size:15.5px;color:var(--sub)}
+.jp-smsg.ok{color:var(--green-d);font-weight:700}
+.jp-smsg.warn,.jp-smsg.bad{color:var(--rose);font-weight:700}
+
+/* ── 语文小件：得分字荧光底 .jp-gold；着重号 .jp-dot > .th（红色点状下划线） ── */
+.jp-gold{background:linear-gradient(transparent 12%,#f6d77a 12%,#f6d77a 92%,transparent 92%);color:#5b3f00;font-weight:800;border-radius:3px;padding:0 1px}
+.jp-dot{font-weight:800}
+.jp-dot .th{text-decoration:underline dotted #C1443B 3px;text-underline-offset:5px}

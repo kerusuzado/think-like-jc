@@ -7,3 +7,9 @@ demo/shots/
 *.pyc
 __pycache__/
 .DS_Store
+
+# 讲评课成绩数据（含学生姓名）：永远不提交
+data.json
+*.fake.csv
+shots/
+demo/review/src/

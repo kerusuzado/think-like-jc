@@ -49,3 +49,7 @@
 
 /* 放大钮挂在画布角上要有定位宿主 */
 .lab-canvas{position:relative}
+
+/* 推导器 token 黄底：最关键 / 最容易错的那一步（单位换算、变号…），推导器 sub 里写一句「黄底 = …」。
+   写法 {t:"600 s",id:"t",role:"hl"}；"jphl" 是讲评课里的旧名，同效 */
+.alg-tok[data-role="hl"],.alg-tok[data-role="jphl"]{background:#fdf1cd;color:#7a5c10;font-weight:700;border-radius:6px;padding:0 .16em}
