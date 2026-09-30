@@ -66,7 +66,7 @@ var FG = (function(){
       if (it.kind === "hline" && typeof it.v === "number") for (var q3 = 0; q3 <= 20; q3++) PTS.push([X(x0 + (x1 - x0) * q3 / 20), Y(it.v)]); });
     /* 曲线名：在「角落 + 曲线末端」几个候选位置里，挑离所有曲线和已放标签最远的那个 */
     function spot(txt, lx, ly){
-      var hw = Math.min(150, 8 + txt.replace(/\\[a-z]+|[{}^_ ]/g, "").length * 6.5), hh = 13, best = null, bd = -1, C3 = [[lx, ly]];
+      var hw = Math.min(160, 16 + txt.replace(/\\[a-z]+|[{}^_ ]/g, "").length * 6.5), hh = 17, best = null, bd = -1, C3 = [[lx, ly]];
       [0, .2, .4, .6, .8, 1].forEach(function(a){ [0, .2, .4, .6, .8, 1].forEach(function(b){ C3.push([pad + hw + 6 + (W - 2 * pad - 2 * hw - 12) * a, pad + hh + 4 + (H - 2 * pad - 2 * hh - 8) * b]); }); });
       C3.forEach(function(q){
         var d = 1e9, inn = 0; PTS.concat(placed).forEach(function(p){ var dx = Math.max(0, Math.abs(p[0] - q[0]) - hw), dy = Math.max(0, Math.abs(p[1] - q[1]) - hh); if (!dx && !dy) inn++; d = Math.min(d, Math.sqrt(dx * dx + dy * dy)); });

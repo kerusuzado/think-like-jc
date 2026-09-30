@@ -51,7 +51,7 @@
     var m, type = head.split(/\s+/)[0], S = { W: W, H: ctx.wide ? 330 : 320, items: [] };
     function E(line, msg, fix) { errs.push({ line: line, msg: msg, fix: fix }); }
     var capHtml = cap ? "<figcaption>" + IL.inline(cap) + "</figcaption>" : "";
-    if (!cap) errs.push({ line: field.line, msg: "图没有图注", fix: "在图下面加一行「图注: 一句话点破这张图说明什么」", warn: true });
+    if (!cap && !ctx.noCap) errs.push({ line: field.line, msg: "图没有图注", fix: "在图下面加一行「图注: 一句话点破这张图说明什么」", warn: true });
 
     if (type === "表格") {
       var rows = items.map(function (it) { return it.text.split(/\s*[|｜]\s*/).filter(function (c, i, a) { return !(c === "" && (i === 0 || i === a.length - 1)); }); });

@@ -50,9 +50,9 @@
       return "<li" + a + ">" + T(s.text, ctx) + "</li>";
     }).join("\n");
   }
-  function figure(p, ctx, n, wide) {
+  function figure(p, ctx, n, wide, noCap) {
     var k = "图" + (n || ""), fk = p.f[k]; if (!fk) return { html: "", keys: [] };
-    var r = FGB.build(fk, f(p, "图注" + (n || "")), { pid: ctx.pid, wide: wide });
+    var r = FGB.build(fk, f(p, "图注" + (n || "")), { pid: ctx.pid, wide: wide, noCap: noCap });
     r.errors.forEach(function (e) { (e.warn ? ctx.warn : ctx.err)(e.line || fk.line, e.msg, e.fix); });
     if (r.js) ctx.figJs.push(r.js);
     (r.assets || []).forEach(function (a) { ctx.assets[a] = 1; });
@@ -222,7 +222,7 @@
     "图解": { scenes: "微论坛 新授课", keys: ["标题", "卡N", "图N", "图注N", "说明N", "口诀"], render: function (p, ctx) {
       var cards = numbered(p, "卡"), n = cards.length;
       if (!n || n > 3) ctx.err(p.line, "图解页 1–3 张卡", "卡1: 关键一：…，下面 图1: … / 说明1: …");
-      return '<div class="mf-key"><div class="keyfig c' + Math.max(2, n) + '">' + cards.map(function (c) { var fig = figure(p, ctx, c.i, false);
+      return '<div class="mf-key"><div class="keyfig c' + Math.max(2, n) + '">' + cards.map(function (c) { var fig = figure(p, ctx, c.i, false, !!f(p, "说明" + c.i));
         return '<div class="kf"><div class="h">' + T(c.v.value, ctx) + "</div>" + fig.html.replace('class="q-fig ', 'class="') + '<div class="t">' + T(f(p, "说明" + c.i), ctx) + "</div></div>"; }).join("") + "</div>" +
         (f(p, "口诀") ? '<div class="keyline">' + T(f(p, "口诀"), ctx) + "</div>" : "") + "</div>"; } },
     "建议": { scenes: "微论坛", keys: ["标题", "建议", "文献"], render: function (p, ctx) {

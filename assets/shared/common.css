@@ -81,3 +81,6 @@
 .fx-roomy .fx b{font-size:20px}
 .fx-roomy .fx p{font-size:18.5px;line-height:1.7;margin-top:6px}
 .fx-roomy .fx-warn .fw-t{font-size:20px}
+/* 题页上方有变式条时，题目区让出变式条的高度（约 68px），不把分步按钮挤出页面 */
+.vs-bar + .q{height:430px}
+.vs-bar + .q .q-side .q-fig svg{max-height:300px}

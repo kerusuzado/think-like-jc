@@ -4,7 +4,7 @@
     "xlsx": "^0.18.5"
   },
   "scripts": {
-    "test": "node tests/test_packs.js",
+    "test": "node tests/test_packs.js && node tests/test_studio.js",
     "make:example": "node studio/cli.mjs"
   }
 }

@@ -129,3 +129,7 @@
 .mf-er i,.mf-er-lg i{font-style:normal;font-size:12px;font-weight:700;border-radius:999px;padding:1px 8px;color:#fff;white-space:nowrap}
 .inkbar{pointer-events:none}
 .inkbar > .ink-tgl{pointer-events:auto}
+/* 课标文字摘录（没有截图时）：一条一块，左边品牌色竖条，像从原文里剪下来的 */
+.mf-excerpt{display:flex;flex-direction:column;gap:12px;margin:4px 60px 10px 0}
+.mf-excerpt p{margin:0;background:#fff;border:1px solid var(--line);border-left:6px solid var(--brand);border-radius:12px;padding:14px 22px;font-size:21px;line-height:1.7;color:var(--ink);box-shadow:0 2px 12px rgba(var(--deep-rgb),.05)}
+.mf-excerpt p b{color:var(--brand-deep)}
