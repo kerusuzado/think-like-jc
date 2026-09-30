@@ -25,8 +25,8 @@
     }
     s = esc(buf);
     // ③ 标记
-    s = s.replace(/〔\+([\w-]+)[:：]([\s\S]*?)〕/g, '<span class="tr hl" data-k="$1">$2</span>');
-    s = s.replace(/〔([\w-]+)[:：]([\s\S]*?)〕/g, '<span class="th hl" data-k="$1">$2</span>');
+    s = s.replace(/〔\+([\w\u4e00-\u9fff-]+)[:：]([\s\S]*?)〕/g, '<span class="tr hl" data-k="$1">$2</span>');
+    s = s.replace(/〔([\w\u4e00-\u9fff-]+)[:：]([\s\S]*?)〕/g, '<span class="th hl" data-k="$1">$2</span>');
     s = s.replace(/\*\*([^*]+?)\*\*/g, "<b>$1</b>");
     s = s.replace(/==([^=]+?)==/g, '<span class="ans-in">$1</span>');
     s = s.replace(/~~([^~]+?)~~/g, "<s>$1</s>");

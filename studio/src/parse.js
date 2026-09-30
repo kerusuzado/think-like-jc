@@ -38,9 +38,15 @@
       if ((m = s.match(HEAD))) { block = "meta"; field = null; if (m[1] !== "课件") meta["_" + m[1]] = true; continue; }
       if ((m = s.match(PAGE))) {
         cur = { type: m[1], chapter: m[2] || "", f: {}, line: ln };
-        if (!schema.types[cur.type]) errors.push({ line: ln, msg: "没有「" + cur.type + "」这种页型", fix: "可用的页型：" + schema.typeNames(meta["场景"]).join("、") });
+        if (!schema.types[cur.type]) {
+          var sc = meta["场景"] ? meta["场景"].value : "", FIG = /^(函数|坐标|数轴|线段|柱状|折线|年代轴|流程|表格|原图|原文)$/.test(cur.type);
+          errors.push({ line: ln, msg: "没有「" + cur.type + "」这种页型" + (FIG ? "（「" + cur.type + "」是图的种类，要写在某一页的「图:」里）" : ""),
+            fix: FIG ? "改成 @页 例题（或 图解 / 套路），在页里写「图: " + cur.type + " …」" : "可用的页型：" + schema.typeNames(sc).join("、") });
+          cur.bad = true;
+        }
         pages.push(cur); block = cur; field = null; continue;
       }
+      if (block && block !== "meta" && block.bad) continue;           // 页型写错了：这一页里的行不再逐行报错
       if (!block) { errors.push({ line: ln, msg: "第一行必须是 @课件", fix: "在文件最前面加一行 @课件，然后写 场景: 新授课 这样的整课设定" }); block = "meta"; }
       if ((m = s.match(ITEM)) && field) {
         field.items.push({ text: m[1].trim(), line: ln }); continue;

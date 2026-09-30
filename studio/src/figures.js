@@ -11,7 +11,7 @@
   function num(s) { return parseFloat(String(s).replace("−", "-")); }
   function opts(t) {                       // 取出 [k] [+k]、颜色、虚线、空心，剩下的文字
     var o = { key: null, reveal: false, color: null, dash: false, hollow: false }, m;
-    t = t.replace(/[\[【]\s*(\+?)\s*([\w-]+)\s*[\]】]/, function (_, p, k) { o.key = k; o.reveal = !!p; return " "; });
+    t = t.replace(/[\[【]\s*(\+?)\s*([\w\u4e00-\u9fff-]+)\s*[\]】]/, function (_, p, k) { o.key = k; o.reveal = !!p; return " "; });
     t = t.replace(/(^|\s)(红|蓝|绿|黄|紫|青|金)(色)?(?=\s|$)/, function (_, a, c) { o.color = c; return a; });
     if (/虚线/.test(t)) { o.dash = true; t = t.replace("虚线", " "); }
     if (/空心/.test(t)) { o.hollow = true; t = t.replace("空心", " "); }
@@ -20,12 +20,14 @@
   }
   /* y=… → JS 表达式；返回 {js, tex} 或 {err} */
   function expr(s, vars) {
-    var tex = s.trim(), e = tex.replace(/^y\s*=\s*/, "");
+    var tex = s.trim(), lhs = tex.match(/^([^=]+)=/);
+    if (lhs && !/^\s*y\s*$/.test(lhs[1])) return { err: "函数图的式子要写成 y=…、自变量用 x（现在左边是「" + lhs[1].trim() + "」）：" + s + "。物理量名称写在图的第一行：图: 函数 x 0..100 y 0..2 横轴 V/cm³ 纵轴 F/N" };
+    var e = tex.replace(/^y\s*=\s*/, "");
     e = e.replace(/\\[td]?frac\s*\{([^{}]*)\}\s*\{([^{}]*)\}/g, "(($1)/($2))").replace(/\\sqrt\s*\{([^{}]*)\}/g, "Math.sqrt($1)")
       .replace(/√\s*\(/g, "Math.sqrt(").replace(/\\left|\\right/g, "").replace(/\\cdot|×|\\times/g, "*").replace(/÷/g, "/").replace(/[−–]/g, "-")
       .replace(/²/g, "^2").replace(/³/g, "^3").replace(/π|\\pi/g, "(Math.PI)").replace(/\{/g, "(").replace(/\}/g, ")")
-      .replace(/\bsqrt\(/g, "Math.sqrt(").replace(/\babs\(/g, "Math.abs(").replace(/\|([^|]+)\|/g, "Math.abs($1)")
-      .replace(/\b(sin|cos|tan|log)\(/g, "Math.$1(").replace(/\bln\(/g, "Math.log(");
+      .replace(/(^|[^.\w])sqrt\(/g, "$1Math.sqrt(").replace(/(^|[^.\w])abs\(/g, "$1Math.abs(").replace(/\|([^|]+)\|/g, "Math.abs($1)")
+      .replace(/(^|[^.\w])(sin|cos|tan|log)\(/g, "$1Math.$2(").replace(/(^|[^.\w])ln\(/g, "$1Math.log(");
     e = e.replace(/(\d)\s*(x|\(|Math)/g, "$1*$2").replace(/\)\s*(\(|x|\d|Math)/g, ")*$1").replace(/x\s*(\(|\d|Math)/g, "x*$1").replace(/x\s*x/g, "x*x");
     e = e.replace(/\^/g, "**");
     vars = vars || [];
@@ -34,7 +36,7 @@
     try { var f = new Function(["x"].concat(vars).join(","), "return " + e); [0.37, 1.3, -2.1].forEach(function (x) { f.apply(null, [x].concat(vars.map(function () { return 1.7; }))); }); }
     catch (err) { return { err: "看不懂这个式子：" + s }; }
     var rest = e.replace(/Math\.\w+/g, ""); vars.forEach(function (v) { rest = rest.replace(new RegExp("\\b" + v + "\\b", "g"), ""); });
-    if (/[^\sx\d.+\-*/()Mathsqrcoinlgbp,PIE]/.test(rest)) return { err: "式子里有看不懂的字：" + s + "（滑条变量要在「拖:」里声明）" };
+    if (/[^\sx\d.+\-*/()Mathsqrcoinlgbp,PIE]/.test(rest)) return { err: "式子里有看不懂的字：" + s + "（自变量只能用 x；滑条变量要在「拖:」里声明）" };
     return { js: e, tex: /^y\s*=/.test(tex) ? tex : "y=" + tex };
   }
 
@@ -85,11 +87,12 @@
       var mx = head.match(new RegExp("x\\s*" + RANGE.source)), my = head.match(new RegExp("y\\s*" + RANGE.source)), mg = head.match(/格\s*(\d+(?:\.\d+)?)/);
       S.xr = mx ? [num(mx[1]), num(mx[2])] : [-5, 5]; S.yr = my ? [num(my[1]), num(my[2])] : [-5, 5]; if (mg) S.step = S.tick = num(mg[1]);
       if (/不等比|拉伸/.test(head)) S.equal = false;
+      var hx = head.match(/横轴\s*(\S+)/), hy = head.match(/纵轴\s*(\S+)/); if (hx) S.xl = hx[1]; if (hy) S.yl = hy[1];
       items.forEach(function (it) {
         var o = opts(it.text), t = o.rest, it2 = { key: o.key, reveal: o.reveal, color: o.color, dash: o.dash, hollow: o.hollow };
         if ((m = t.match(/^(?:曲线|函数|直线)\s*(.+)$/))) {
           var fr = m[1].match(/从\s*(.+?)\s*到\s*(.+?)\s*(?:名|不标|无标签|$)/); var ex = m[1].replace(/从.*$/, "").replace(/名\s*.*$/, "").replace(/不标|无标签/, "").trim();
-          var r = expr(ex, ctx.vars); if (r.err) return E(it.line, r.err, "写成 y=x^2-2x-3 这样（乘号可以省略，分数写 \\frac{a}{b}）");
+          var r = expr(ex, ctx.vars); if (r.err) return E(it.line, r.err, /自变量用 x（现在左边/.test(r.err) ? "例：曲线 y=0.01x（横轴、纵轴的物理量名写在「图:」第一行）" : "写成 y=x^2-2x-3 这样（乘号可以省略，分数写 \\frac{a}{b}）");
           it2.kind = "curve"; it2.js = r.js; it2.label = /不标|无标签/.test(m[1]) || (ctx.vars && ctx.vars.length) ? "" : r.tex;
           if (fr) { it2.from = val(fr[1], ctx.vars); it2.to = val(fr[2], ctx.vars); if (it2.from !== it2.from || it2.to !== it2.to) return E(it.line, "「从 … 到 …」看不懂", "例：从 -1 到 3，或含滑条变量：从 (20-L)/2 到 10"); }
         } else if ((m = t.match(/^点\s*([A-Za-z\u4e00-\u9fa5]'?)?\s*[（(]\s*([^,，()（）]+(?:\([^()]*\))?[^,，()（）]*)\s*[,，]\s*(.+?)\s*[)）](.*)$/))) {

@@ -5,7 +5,6 @@
 (function (root) {
   "use strict";
   var BOX = [".tp-card", ".tp-anti", ".wr", ".q-aside", ".exq", ".sop", ".mm-leaf", ".concl", ".fx", ".jp-err", ".h7-card", ".rp-card", ".rp-adv li", ".mf-excerpt p"];
-  var SRC = [["li[data-hl]", "data-hl"]];
   function sleep(ms) { return new Promise(function (r) { setTimeout(r, ms); }); }
 
   function check(win, o) {
@@ -31,12 +30,7 @@
       if (t.offsetHeight > lh * 1.6) err(p, "页标题折成了两行", "把这一页的「标题:」缩短到 20 个字以内");
     });
 
-    // 孤儿键：步骤点亮的键，本页图里没有
-    pages.forEach(function (p) {
-      var have = {}; [].forEach.call(p.querySelectorAll(".hl[data-k],[data-k]"), function (e) { (e.getAttribute("data-k") || "").split(/\s+/).forEach(function (k) { have[k] = 1; }); });
-      var miss = {}; SRC.forEach(function (s) { [].forEach.call(p.querySelectorAll(s[0]), function (e) { (e.getAttribute(s[1]) || "").split(/\s+/).forEach(function (k) { if (k && !have[k]) miss[k] = 1; }); }); });
-      var m = Object.keys(miss); if (m.length) err(p, "步骤里点亮 [" + m.join(" ") + "]，图里找不到", "在「图:」下面对应那一项后面加上 [" + m[0] + "]");
-    });
+    // （孤儿键由引擎装配时逐行检查）
 
     // 推导器缩放
     [].forEach.call(doc.querySelectorAll(".derive"), function (d) {
@@ -55,7 +49,7 @@
         var h0 = p.scrollHeight;
         if (h0 > 721) err(p, "内容超出页面 " + (h0 - 720) + " 像素", "删减这一页的文字，或拆成两页");
         var d = D[p.id]; try { if (d && d.toEnd) d.toEnd(); } catch (e) {}
-        var q = p.querySelector(".q"), lit = 0, hasHl = !!(q && q.querySelector(".hl"));
+        var q = p.querySelector(".q"), lit = 0, hasHl = !!(q && q.querySelector(".hl") && q.querySelector("li[data-hl]"));
         if (q) {
           var b = q.querySelector(".sol-btn"), sv = q.querySelector(".solve"); if (b && sv && sv.hidden) b.click();
           var nx = q.querySelector(".sol-nav.next");

@@ -63,7 +63,7 @@
     html = html.replace("<!--@inline:liquid-motion.css-->", function () { return R.liquid.css; }).replace("<!--@inline:liquid-motion.js-->", function () { return R.liquid.js; });
     html = html.replace(/__ASSET:([^_\s"')]+?)__/g, function (_, name) {
       var u = (assets || {})[name] || (R.assets || {})[name];
-      if (!u) { errs.push({ msg: "找不到图片「" + name + "」", fix: "在装配台里上传这张图，或把课件稿里的文件名改成已上传的" }); return ""; }
+      if (!u) { errs.push({ msg: "找不到图片「" + name + "」", fix: "老师没有上传这张图：把这一页的「图: 原图 …」改成自己画的图（函数 / 表格 / 流程 / 柱状），或者删掉这个图" }); return ""; }
       return u;
     });
     html = html.replace(/<x-tex( display)?>([\s\S]*?)<\/x-tex>/g, function (_, d, t) {

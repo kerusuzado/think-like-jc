@@ -56,7 +56,7 @@
     r.errors.forEach(function (e) { (e.warn ? ctx.warn : ctx.err)(e.line || fk.line, e.msg, e.fix); });
     if (r.js) ctx.figJs.push(r.js);
     (r.assets || []).forEach(function (a) { ctx.assets[a] = 1; });
-    return { html: r.html, keys: r.keys || [], textKeys: (r.html.match(/data-k="([\w-]+)"/g) || []).map(function (x) { return x.slice(8, -1); }) };
+    return { html: r.html, keys: r.keys || [], textKeys: (r.html.match(/data-k="([^"]+)"/g) || []).map(function (x) { return x.slice(8, -1); }) };
   }
   function checkKeys(ctx, used, fig) {
     var have = {}; (fig.keys || []).concat(fig.textKeys || []).forEach(function (k) { have[k] = 1; });

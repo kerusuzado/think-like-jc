@@ -50,7 +50,7 @@ var FG = (function(){
     for (var gy = Math.ceil(y0 / st) * st; gy <= y1; gy += st) el("line", {x1:X(x0), y1:Y(gy), x2:X(x1), y2:Y(gy), stroke:C.grid, "stroke-width":1}, L.base);
     el("line", {x1:X(x0), y1:Y(0), x2:X(x1) + 6, y2:Y(0), stroke:C.axis, "stroke-width":1.6}, L.base); arrowHead(L.base, X(x1) + 12, Y(0), 0, C.axis, 8);
     el("line", {x1:X(0), y1:Y(y0), x2:X(0), y2:Y(y1) - 6, stroke:C.axis, "stroke-width":1.6}, L.base); arrowHead(L.base, X(0), Y(y1) - 12, -Math.PI/2, C.axis, 8);
-    T(L.lbl, X(x1) + 6, Y(0) + 14, "x", {i:true, s:15}); T(L.lbl, X(0) + 12, Y(y1) - 10, "y", {i:true, s:15}); var near = function(k, v){ return S.items.some(function(it){ return (it.kind === k || (k === "pt" && it.kind === "point")) && typeof (k === "pt" ? it.x : it.v) === "number" && (k === "pt" ? Math.abs(it.x) < st * .3 && Math.abs(it.y) < st * .3 : Math.abs(it.v - v) < 1e-9); }); };
+    T(L.lbl, X(x1) + 6, Y(0) + 14, S.xl || "x", {i:!S.xl, s:S.xl ? 13 : 15, a:S.xl ? "end" : "middle"}); T(L.lbl, X(0) + 12, Y(y1) - 10, S.yl || "y", {i:!S.yl, s:S.yl ? 13 : 15, a:S.yl ? "start" : "middle"}); var near = function(k, v){ return S.items.some(function(it){ return (it.kind === k || (k === "pt" && it.kind === "point")) && typeof (k === "pt" ? it.x : it.v) === "number" && (k === "pt" ? Math.abs(it.x) < st * .3 && Math.abs(it.y) < st * .3 : Math.abs(it.v - v) < 1e-9); }); };
     if (!near("pt")) T(L.lbl, X(0) - 10, Y(0) + 13, "O", {i:true, s:14});        // 原点上有点就不写 O，免得字压点
     var ts = S.tick || st;
     for (var tx = Math.ceil(x0 / ts) * ts; tx <= x1 - ts/2; tx += ts) if (Math.abs(tx) > 1e-9){ el("line", {x1:X(tx), y1:Y(0) - 3, x2:X(tx), y2:Y(0) + 3, stroke:C.axis}, L.base); if (!near("vline", tx)) T(L.base, X(tx), Y(0) + 14, fmt(tx), {s:11.5, c:C.sub, w:400}); }
