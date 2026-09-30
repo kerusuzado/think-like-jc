@@ -28,11 +28,13 @@
     errors = errors.concat(b.errors.map(function (e) { return { line: null, msg: e.msg, fix: e.fix }; }));
     var rep = R ? R.report() : null;
     if (rep && scene === "讲评课" && rep.missLow.length) warnings.push({ line: null, msg: "这些小问得分率低于 50% 却没讲到：" + rep.missLow.join(" "), fix: "给它们各加一页「讲题」" });
-    return { html: b.html, errors: errors, warnings: warnings, scene: scene, title: out.title, pages: (out.pages.match(/<section class="page/g) || []).length, stats: M, feedback: feedback(errors, warnings) };
+    return { html: b.html, errors: errors, warnings: warnings, scene: scene, title: out.title, pages: (out.pages.match(/<section class="page/g) || []).length, stats: M, pageLines: out.pageLines || {}, feedback: feedback(errors, warnings) };
   }
 
   /* 给模型的修改意见（平台可以原样回传给模型） */
   function feedback(errors, warnings) {
+    function uniq(a) { var seen = {}; return a.filter(function (e) { var k = e.line + "|" + e.msg; if (seen[k]) return false; seen[k] = 1; return true; }); }
+    errors = uniq(errors); warnings = uniq(warnings);
     if (!errors.length && !warnings.length) return "";
     var L = ["装配台检查了你的课件稿，请按下面逐条修改，然后**输出修改后的完整课件稿**（从 @课件 开始，不要只输出改动的部分）："];
     errors.forEach(function (e, i) { L.push((i + 1) + ". " + (e.line ? "第 " + e.line + " 行：" : "") + e.msg + (e.fix ? "。改法：" + e.fix : "")); });

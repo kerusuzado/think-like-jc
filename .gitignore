@@ -13,3 +13,4 @@ data.json
 *.fake.csv
 shots/
 demo/review/src/
+dist/

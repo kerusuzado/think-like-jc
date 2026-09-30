@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>课件装配台</title>
+<style>/*@@CSS@@*/</style>
+</head>
+<body>
+<header>
+  <h1>课件装配台</h1><span class="org" id="org"></span>
+  <span class="sp"></span>
+  <select id="ex" title="载入示范稿"><option value="">载入示范稿…</option></select>
+  <button id="bDl" title="下载单文件 HTML，断网也能放">下载课件</button>
+  <button class="go" id="bRun" title="Ctrl + Enter">装配并检查</button>
+</header>
+<main>
+  <section class="left">
+    <div class="tabs">
+      <button data-t="src" class="on">课件稿</button>
+      <button data-t="res">素材<span class="n ok" id="nRes" hidden>0</span></button>
+      <button data-t="iss">问题<span class="n" id="nIss" hidden>0</span></button>
+    </div>
+    <div class="pane on" data-p="src">
+      <div class="ed"><div class="gut" id="gut"></div><textarea id="src" spellcheck="false" placeholder="把模型写好的课件稿粘贴到这里（从 @课件 开始）"></textarea></div>
+    </div>
+    <div class="pane" data-p="res">
+      <label class="drop" id="drop"><input type="file" id="file" multiple hidden accept=".csv,.tsv,.txt,.xlsx,.xls,.png,.jpg,.jpeg,.webp,.svg,.json">
+        <b>拖进来，或点这里选文件</b>成绩表（Excel / CSV）、题目截图、品牌包（brand.json + 校徽等图片）</label>
+      <div class="assets">
+        <h3>成绩表</h3><div id="tbls"></div>
+        <p class="hint">文件名或工作表名里带「成绩 / 题目 / 班级 / 梯度 / 历次」就能自动认出来；也可以直接叫 <code>A.csv</code> … <code>E.csv</code>。格式见《课件稿格式》。<br><a href="#" id="exTbl">载入一套假的示范成绩表</a></p>
+        <h3>图片</h3><div id="imgs"><p class="hint">课件稿里写 <code>图: 原图 第6题.png</code> 的，这里上传同名图片。</p></div>
+        <h3>品牌</h3><div id="brandBox"></div>
+      </div>
+    </div>
+    <div class="pane" data-p="iss">
+      <div class="issues" id="issues"><div class="empty"><b>✓</b>还没装配。写好课件稿后按「装配并检查」。</div></div>
+      <div class="fb">
+        <div class="row"><span>给模型的修改意见（复制后发给模型，它会输出改好的完整课件稿）</span><button class="btn" id="bCopy">复制</button></div>
+        <textarea id="fb" readonly></textarea>
+      </div>
+    </div>
+  </section>
+  <section class="right">
+    <div class="bar"><span class="dot" id="dot"></span><span class="st" id="st">未装配</span></div>
+    <iframe id="view" title="预览"></iframe>
+    <div class="ph" id="ph"><div><b>预览在这里</b>左边粘贴课件稿 → 按「装配并检查」（Ctrl + Enter）</div></div>
+  </section>
+</main>
+<iframe id="probe" aria-hidden="true" tabindex="-1"></iframe>
+<div class="toast" id="toast"></div>
+<script type="application/json" id="tljc-res">@@RES@@</script>
+<script type="application/json" id="tljc-ex">@@EX@@</script>
+<script>/*@@KATEX@@*/</script>
+<script>/*@@XLSX@@*/</script>
+<script>/*@@ENGINE@@*/</script>
+<script>/*@@APP@@*/</script>
+</body>
+</html>

@@ -254,7 +254,7 @@
   function render(doc, env) {
     env = env || {};
     var meta = {}; Object.keys(doc.meta).forEach(function (k) { if (k[0] !== "_") meta[k] = doc.meta[k].value; });
-    var ctx = { meta: meta, brand: env.brand, errors: [], warnings: [], figJs: [], deriveJs: [], labsJs: [], assets: {}, timers: 0, refs: [], levelsUsed: [], levelsHave: [], kick: {}, R: env.R || null, fill: env.fill || null };
+    var ctx = { meta: meta, brand: env.brand, errors: [], warnings: [], figJs: [], deriveJs: [], labsJs: [], assets: {}, timers: 0, refs: [], levelsUsed: [], levelsHave: [], kick: {}, pageLines: {}, R: env.R || null, fill: env.fill || null };
     ctx.err = function (line, msg, fix) { ctx.errors.push({ line: line, msg: msg, fix: fix }); };
     ctx.warn = function (line, msg, fix) { ctx.warnings.push({ line: line, msg: msg, fix: fix }); };
     doc.errors.forEach(function (e) { ctx.errors.push(e); }); doc.warnings.forEach(function (e) { ctx.warnings.push(e); });
@@ -271,7 +271,7 @@
     var out = [AS.coverHtml({ chip: T(meta.小标签 || (meta.年级 || "") + meta.学科 + " · " + scene, ctx), hero: meta.大字 || "", sub: T(meta.副标题 || "", ctx), byline: T([meta.署名, meta.署名2].filter(Boolean).join("<br>"), ctx), nodes: chNames }, env.brand)];
     var cur = chNames[0], n = 0;
     doc.pages.forEach(function (p) {
-      n++; ctx.pid = "page-" + n; var t = TYPES[p.type]; if (!t) return;
+      n++; ctx.pid = "page-" + n; ctx.pageLines[ctx.pid] = p.line; var t = TYPES[p.type]; if (!t) return;
       if (t.scenes.indexOf(scene) < 0 && !(scene === "专题课" && t.scenes.indexOf("新授课") >= 0)) ctx.warn(p.line, "「" + p.type + "」通常不用在" + scene + "里", "确认没选错页型");
       if (p.chapter) { if (chIds[p.chapter] == null) ctx.err(p.line, "章节「" + p.chapter + "」不在整课设定的章节列表里", "章节列表：" + chNames.join("、")); else cur = p.chapter; }
       var title = p.f.标题 ? T(p.f.标题.value, ctx) : ""; if (!title) ctx.err(p.line, "这一页没有标题", "标题: 一句话点破这一页");
@@ -289,7 +289,7 @@
     if (need != null && ctx.timers !== need) ctx.err(null, "全课计时器合计 " + ctx.timers + " 秒，" + scene + "要求 " + need + " 秒", need ? "调整各练习页的计时，加起来正好 20:00" : scene + "不设计时器，删掉「计时:」");
     var chJs = "var CHAPTERS = " + JSON.stringify(chapters) + ";";
     return { pages: out.join("\n"), chapters: chJs, derive: ctx.deriveJs.join("\n"), labs: "(function(){\n" + ctx.figJs.join("\n") + "\n})();", assets: Object.keys(ctx.assets),
-      title: meta.标题 || "课件", scene: scene, timers: ctx.timers, errors: ctx.errors, warnings: ctx.warnings, meta: meta };
+      title: meta.标题 || "课件", scene: scene, timers: ctx.timers, errors: ctx.errors, warnings: ctx.warnings, meta: meta, pageLines: ctx.pageLines };
   }
   function endPage(meta, b, ctx) {
     var photo = b && b.cover_photo ? '<img class="mf-end-photo" src="__ASSET:' + b.cover_photo + '__" alt="">' : '<div class="cover-art mf-end-photo"></div>';
