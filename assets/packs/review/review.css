@@ -36,7 +36,10 @@
 .ovl-i.jp-left{transform:translate(0,-50%)!important}
 
 /* ── 成绩全景（review_lib.overview() 生成） ── */
-.jp-all{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+.jp-all{display:grid;grid-template-columns:1fr 1fr;gap:18px;align-items:start}
+.jp-all>.jp-card{display:flex;flex-direction:column}
+.jp-all>.jp-card>.jp-bar{margin:14px 0;font-size:17px}.jp-all>.jp-card>.jp-bar>i{height:14px}
+.jp-all .jp-qcols .jp-bar{margin:10px 0;font-size:16px}
 .jp-card{background:#fff;border:1px solid var(--line);border-radius:14px;padding:12px 16px;
   box-shadow:0 1px 2px rgba(var(--deep-rgb),.05),0 6px 22px rgba(var(--deep-rgb),.06)}
 .jp-h{display:block;font-size:16px;color:var(--brand-deep)}

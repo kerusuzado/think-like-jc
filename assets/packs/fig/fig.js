@@ -57,14 +57,33 @@ var FG = (function(){
     for (var ty = Math.ceil(y0 / ts) * ts; ty <= y1 - ts/2; ty += ts) if (Math.abs(ty) > 1e-9){ el("line", {x1:X(0) - 3, y1:Y(ty), x2:X(0) + 3, y2:Y(ty), stroke:C.axis}, L.base); if (!near("hline", ty)) T(L.base, X(0) - 12, Y(ty), fmt(ty), {s:11.5, c:C.sub, w:400, a:"end"}); }
     var clip = "fgc" + Math.random().toString(36).slice(2, 7);
     var defs = el("defs", {}, svg); var cp = el("clipPath", {id:clip}, defs); el("rect", {x:pad - 4, y:pad - 4, width:W - 2*pad + 8, height:H - 2*pad + 8}, cp);
-    var ci = 0;
+    var ci = 0, PTS = [], placed = [];
+    S.items.forEach(function(it){ if (it.kind !== "curve") return; var g = new Function("x", "return " + it.js), a = it.from != null ? it.from : x0, b = it.to != null ? it.to : x1;
+      for (var k = 0; k <= 60; k++){ var xx = a + (b - a) * k / 60, yy = g(xx); if (isFinite(yy)) PTS.push([X(xx), Y(yy)]); } });
+    for (var ax = 0; ax <= 40; ax++){ PTS.push([X(x0 + (x1 - x0) * ax / 40), Y(0) + 8]); PTS.push([X(0) - 12, Y(y0 + (y1 - y0) * ax / 40)]); }   // 坐标轴和刻度字也算障碍
+    S.items.forEach(function(it){ if (it.kind === "point" && typeof it.x === "number"){ PTS.push([X(it.x), Y(it.y)]); if (it.coord || it.name) for (var q = 0; q <= 6; q++) PTS.push([X(it.x) + 10 + q * 12, Y(it.y) - 16]); }
+      if (it.kind === "vline" && typeof it.v === "number") for (var q2 = 0; q2 <= 20; q2++) PTS.push([X(it.v), Y(y0 + (y1 - y0) * q2 / 20)]);
+      if (it.kind === "hline" && typeof it.v === "number") for (var q3 = 0; q3 <= 20; q3++) PTS.push([X(x0 + (x1 - x0) * q3 / 20), Y(it.v)]); });
+    /* 曲线名：在「角落 + 曲线末端」几个候选位置里，挑离所有曲线和已放标签最远的那个 */
+    function spot(txt, lx, ly){
+      var hw = Math.min(150, 8 + txt.replace(/\\[a-z]+|[{}^_ ]/g, "").length * 6.5), hh = 13, best = null, bd = -1, C3 = [[lx, ly]];
+      [0, .2, .4, .6, .8, 1].forEach(function(a){ [0, .2, .4, .6, .8, 1].forEach(function(b){ C3.push([pad + hw + 6 + (W - 2 * pad - 2 * hw - 12) * a, pad + hh + 4 + (H - 2 * pad - 2 * hh - 8) * b]); }); });
+      C3.forEach(function(q){
+        var d = 1e9, inn = 0; PTS.concat(placed).forEach(function(p){ var dx = Math.max(0, Math.abs(p[0] - q[0]) - hw), dy = Math.max(0, Math.abs(p[1] - q[1]) - hh); if (!dx && !dy) inn++; d = Math.min(d, Math.sqrt(dx * dx + dy * dy)); });
+        var sc = Math.min(d, 40) - inn * 50;                 // 先少压东西，再离得远
+        if (!best || sc > bd + 4){ bd = sc; best = q; best.inn = inn; } });
+      placed.push(best); return best;
+    }
     S.items.forEach(function(it){
       var G = grp(L, it), c = col(it.color, it.kind === "curve" ? ci++ : 2), n;
       if (it.kind === "curve"){
         var f = new Function("x", "return " + it.js), d = "", pen = false, xa = it.from != null ? it.from : x0, xb = it.to != null ? it.to : x1;
         for (var k = 0; k <= 240; k++){ var x = xa + (xb - xa) * k / 240, y = f(x); if (!isFinite(y) || y < y0 - 50 || y > y1 + 50){ pen = false; continue; } d += (pen ? "L" : "M") + X(x).toFixed(1) + " " + Y(y).toFixed(1); pen = true; }
         n = el("path", {d:d, fill:"none", stroke:c, "stroke-width":2.6, "clip-path":"url(#" + clip + ")", "stroke-dasharray":it.dash ? "6 5" : ""}, G.g);
-        if (it.label){ var lx = xb - (xb - xa) * .12, ly = f(lx); if (isFinite(ly)) ovl(ov, [W, H], X(lx) + 6, Math.max(pad + 10, Math.min(H - pad - 10, Y(ly) - 14)), KX(it.label), "fg-lbl"); }
+        if (it.label){ var lx = xb - (xb - xa) * .12, ly = f(lx); if (isFinite(ly)){ var q = spot(it.label, X(lx) + 6, Math.max(pad + 10, Math.min(H - pad - 10, Y(ly) - 14)));
+          var cap = q.inn && svg.closest && svg.closest("figure") && svg.closest("figure").querySelector("figcaption");
+          if (cap){ placed.pop(); if (!cap.querySelector('[data-leg="' + ci + '"]')) cap.insertAdjacentHTML("afterbegin", '<span class="fg-leg" data-leg="' + ci + '"><i style="background:' + c + '"></i>' + KX(it.label) + "</span>"); }   // 图里挤不下：曲线名放到图注里当图例
+          else ovl(ov, [W, H], q[0], q[1], KX(it.label), "fg-lbl"); } }
       } else if (it.kind === "point"){
         n = el("circle", {cx:X(it.x), cy:Y(it.y), r:4.8, fill:it.hollow ? "#fff" : c, stroke:c, "stroke-width":2}, G.g);
         if (it.name && !it.coord) T(G.g, X(it.x) + (it.dx || 10), Y(it.y) + (it.dy || -12), it.name, {i:/^[A-Za-z]'?$/.test(it.name), s:15, w:700, a:"start"});
