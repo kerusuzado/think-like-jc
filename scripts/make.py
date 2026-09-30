@@ -23,7 +23,8 @@ NEEDS_REVIEW = {"history", "chem", "physics", "english"}
 
 
 def run(cmd, cwd=None, show=True):
-    r = subprocess.run(cmd, cwd=cwd, capture_output=True, text=True)
+    env = dict(os.environ, TLJC_HOME=os.environ.get("TLJC_HOME", SK))     # 课件放在 skill 外面也能找到 brand.py / review_lib
+    r = subprocess.run(cmd, cwd=cwd, capture_output=True, text=True, env=env)
     if show and r.stdout.strip(): print(r.stdout.rstrip())
     if r.stderr.strip(): print(r.stderr.rstrip(), file=sys.stderr)
     return r

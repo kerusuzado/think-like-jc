@@ -117,7 +117,7 @@ class Review:
         for i, c in enumerate(cards):
             o.append('<span class="h7-kc" data-i="%d"><i>%s</i><em>%s</em></span>' % (i, c["k"], self.answer.get(str(c["k"]), c.get("ans", "?"))))
         o.append('<span class="h7-kh">按 ▶ 一题一题揭</span>%s</div>' % self.names_html(keys))
-        o.append('<div class="h7-cards" style="grid-template-columns:repeat(%d,1fr)">' % (cols or len(cards)))
+        o.append('<div class="h7-cards" style="grid-template-columns:repeat(%d,1fr)%s">' % (cols or len(cards), ";height:auto" if len(cards) < 3 else ""))
         for i, c in enumerate(cards):
             k = str(c["k"]); f = lambda t: self.fill(t, k)
             n = len(c["opts"]); oc = " h7-opts1" if max(len(x) for x in c["opts"]) > 12 else (" h7-opts2" if max(len(x) for x in c["opts"]) > 6 else "")

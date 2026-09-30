@@ -85,6 +85,7 @@ def main(d):
             except FileNotFoundError: pass
         else: err("讲评课缺 data.json：先 python3 scripts/review_data.py 成绩.csv lesson/data.json")
         src = re.sub(r"\{[^{}]*\}", "", gen)
+        src = "\n".join(l for l in src.splitlines() if "阅卷记录" not in l)   # 注明「阅卷记录」的人数允许手写
         typed = re.findall(r"(\d+)\s*人(?:选|写|填|丢|没|错|把|答|空)", src)
         if typed: warn("gen.py 里手敲了人数（%s 人…）：选项 / 丢分人数用 {键.B} {键.错} 占位符从 data.json 算；只有阅卷记录里的「写了什么」才手写" % "、".join(typed[:4]))
         if "mini-timer" in pages: err("讲评课不设计时器")

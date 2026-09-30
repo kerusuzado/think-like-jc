@@ -62,11 +62,12 @@ mkdir -p 我的课/lesson && cp -r <skill>/assets/lesson-template/* 我的课/le
 ```bash
 python3 <skill>/scripts/make.py 我的课
 ```
-第一次用：skill 目录 `npm install katex`、`pip install playwright`。
+第一次用：skill 目录 `npm install katex`、`pip install playwright`。课件目录放在哪都行（make.py 会告诉 gen.py skill 在哪；单独跑 gen.py 时设 `TLJC_HOME=<skill>`）。
 它会：跑 gen.py → `lint.py`（静态 ERROR 就停）→ 按代码自动识别要哪些包并装配 → 构建单文件 → `audit.py`（讲评课自动 `--type review`）+ 逐页截图 → 写 `shots/CHECKLIST.md`。
 不过 = 看它打印的「停在第几步」和 CHECKLIST 里带 ✗ 的页，改源文件，**重跑 make.py**。不要手改 `src/` 或成品 HTML。
 
 ### 第 5 步 目验（两道都过才算做完）
+截图：`NN-页.png` 是初始态，`NN-页-end.png` 是步进走完的终态（图上高亮是否跟着步骤走，就对照这两张 + 在浏览器里点一遍）。
 打开 `shots/CHECKLIST.md`，**逐张看截图**：溢出/遮挡 · 图上文字压线压字 · 公式折行 · 图和题干对得上 · 结论没提前露 · 标题一行 · 同课图风一致 · 数字和成绩全景一致。带 ⚠ 的条目每一条都要亲眼确认。发现问题回去改，再跑 make.py，再看图。**至少两轮。**
 
 ### 第 6 步 交付

@@ -143,6 +143,7 @@ def main():
         if o['WARN']: print('⚠ 软提示（逐条打开截图亲眼看，确认没问题才算过）：' + '、'.join(o['WARN']), file=sys.stderr)
         if shots:
             os.makedirs(shots, exist_ok=True)
+            pg.reload(); pg.wait_for_timeout(900)          # 上面量的时候已经把步进走到底了：重新加载，截的才是初始态
             for i in range(o['n']):
                 pg.evaluate(f"window.__showPage({i},1)"); pg.wait_for_timeout(250)
                 pid = pg.evaluate(f"document.querySelectorAll('.page')[{i}].id")

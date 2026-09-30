@@ -66,6 +66,10 @@ def main(src, out, prefix=""):
     n = len(stu); full = sum(mx.values())
     print("✓ %s：%d 人、%d 个班、%d 个小问（满分 %g），%d 道选择题有选项分布" %
           (out, n, len({s["c"] for s in stu}), len(keys), full, len(picks)))
+    rates = {k: sum(s["l"].get(k, mx[k]) for s in stu) / (mx[k] * n) for k in keys}
+    print("  得分率从低到高：" + "　".join("%s %d%%" % (k, round(r * 100)) for k, r in sorted(rates.items(), key=lambda x: x[1])))
+    print("  → < 50%% 的必须单独讲；≥ 80%% 的选择题进速查卡：%s" % " ".join(k for k in keys if k in picks and rates[k] >= .8))
+    for k in picks: print("  第 %s 题选项：%s（正确 %s）" % (k, " ".join("%s %d" % (c, picks[k][c]) for c in sorted(picks[k])), ans.get(k)))
     print("  data.json 含学生姓名：只留在老师自己的课件目录里，别提交到公开仓库。")
 
 

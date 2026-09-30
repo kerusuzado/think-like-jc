@@ -178,3 +178,23 @@ P.append(page("page-err", "q13", "第 13 题 · 错在哪（学生原话，不�
 ## 其他讲评组件（HTML 结构见 `assets/packs/review/review.js` 各段开头的注释）
 逐条揭 `.jp-seq > .jp-si`（`.jp-sa` 是揭开前遮住的答案）· 逐个现 `.st-wrap > .st` · 点选看依据 `.jp-chipbar` · 换一换 `.jp-fix` · 分拣台 `.jp-sort` · 选项逐项核对 `.jp-jo` · 翻卡 `.pv-wrap` · 要点勾选表 `.ck-wrap` · RD 原文 + 逐题卡 `.rd`（见 `subjects/english.md §2`）· 易错八处照旧 `.wrgrid`。
 **一页只放一个步进组件。**
+
+## 推导器 token 速查（新授 / 讲评通用；引擎在 chassis/03-mid-b.js，不用读它）
+```js
+{t:"60", id:"a"}                       // 普通字符：同一个量从头到尾用同一个 id，动画才会原位飞过去
+{t:"=", id:"eq", op:1}                 // 运算符 / 等号（op:1）
+{t:"5", id:"c", role:"res"}            // role：res 结果绿 · focus 关注绿 · in 新代入琥珀 · flip 变号玫红 · hl 黄底（关键一步 / 单位换算）
+{f:1, id:"F", n:[…分子 token], d:[…分母 token]}   // 分式（分数线本身是 token "F-bar"）
+G("P", [...], "2")                     // 括号组（可带上标）；R("R", [...]) 根号
+```
+每步：`{label:"这一步做了什么", dur:1100, line:[…], absorb:{"旧id":"新id"}, cancel:["id"]}`；`absorb` 把消失的字吸进另一个字（合并同类项、约分），没有去处的字会淡出。
+高度：每行约 36px、带分数的行约 56px，外框 98px；讲评课的计算页（exq + 推导器 + 结论条）推导器取 300 左右。
+**分式行会贴住上一行**：分式只放在最后一两行；前面的行写平的 `Q ÷ q`，到算结果那一步再换成分式。
+推导页 HTML（`R.q` 不管推导页，自己写）：
+```python
+P.append(page("page-5b", "q5", "第 5(1) 题 · 推一遍：Δt 是差，不是末温", """
+    <div class="exq"><span class="tag">第 5(1) 题</span>质量 2 kg 的水从 20 ℃ 升到 70 ℃，吸收多少热量？　%s</div>
+    <div class="derive" id="dv-5a" style="height:300px"></div>
+    <div class="concl reveal-after"><b>结论</b><span class="ans-in">4.2×10⁵ J</span>　%s</div>""" % (R.rate_html("5(1)"), R.fill("{5(1).错} 人没拿满"))))
+# derivations.js：stepDrivers["page-5b"] = makeDerive($("#dv-5a"), {title:"…", sub:'依据：<i data-tex="Q=cm\\Delta t"></i>。黄底 = …', steps:[…]});
+```
