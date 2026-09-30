@@ -27,7 +27,7 @@ def build(lesson_dir, out_path, packs=(), shared=()):
         fp = os.path.join(lesson_dir, fn)
         if os.path.exists(fp):
             import json
-            data_js += "var %s = %s;\n" % (var, json.dumps(json.load(io.open(fp, encoding="utf-8")), ensure_ascii=False, separators=(",", ":")))
+            data_js += "window.%s = %s;\n" % (var, json.dumps(json.load(io.open(fp, encoding="utf-8")), ensure_ascii=False, separators=(",", ":")).replace("<", "\\u003c"))
     if data_js: js_extra = "\n/* ── 课件数据（data.json / words.json）── */\n" + data_js + js_extra
     head = rd(os.path.join(C, "01-head.html"))
     title = rd(os.path.join(lesson_dir, "title.txt")).strip()

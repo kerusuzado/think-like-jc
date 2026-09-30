@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
-"""无头浏览器自检：python3 audit.py <课件.html> [截图目录] [--scale 1400x800] [--type new|review]
+"""无头浏览器自检：python3 audit.py <课件.html> [截图目录] [--scale 1400x800] [--type new|topic|review|forum|report]
 
 --type new（默认，新授 / 训练 / 复习 / 应用课）：全课计时器合计必须 1200 秒。
---type review（练习 / 考试讲评课）：不许有计时器（合计 0），不要求总结导图。
+--type review（练习 / 考试讲评课）、topic（专题课）、report（成绩分析）：不许有计时器（合计 0）。
+--type forum（微论坛）：计时器不限。
 
 硬闸门（任何一项不过 → PASS=false，退出码 1）：
   over       每页 scrollHeight ≤ 721（收起态和展开态都量）
@@ -32,9 +33,11 @@ document.querySelectorAll('.page').forEach(p=>{if(p.scrollHeight>721)o.over.push
 document.querySelectorAll('.derive').forEach(d=>{var r=d.querySelector('.alg-rows');o.fit[d.id]=r?(r.style.getPropertyValue('--fit')||'1').trim():'norows';});
 document.querySelectorAll('.mini-timer').forEach(t=>{o.tt+=(+t.dataset.min||0)*60+(+t.dataset.sec||0);});
 /* 名单：加载时必须全收起；页面可见文字里不许有学生姓名 */
-document.querySelectorAll('.jp-list').forEach(l=>{if(!l.hidden)o.names.push(['名单没收起',l.closest('.page').id]);});
+document.querySelectorAll('.jp-list,.rp-list').forEach(l=>{if(!l.hidden)o.names.push(['名单没收起',l.closest('.page').id]);});
 if(window.JP_DATA&&JP_DATA.stu){var txt=document.querySelector('.page-deck')?document.querySelector('.page-deck').innerText:document.body.innerText;
   var seen={};JP_DATA.stu.forEach(s=>{if(s.n&&s.n.length>=2&&!seen[s.n]&&txt.indexOf(s.n)>=0){seen[s.n]=1;o.names.push(['页面里出现学生姓名',s.n]);}});}
+if(window.JP_DATA&&JP_DATA.lists){var tx2=document.body.innerText,nm={};Object.values(JP_DATA.lists).forEach(L=>{(L.chong||[]).forEach(c=>c.names.forEach(n=>nm[n]=1));(L.back||[]).forEach(n=>nm[n]=1);if(L.patch)L.patch.names.forEach(n=>nm[n]=1);});
+  Object.keys(nm).forEach(n=>{if(n.length>=2&&tx2.indexOf(n)>=0)o.names.push(['页面里出现学生姓名',n]);});}
 /* 一页一个步进组件 */
 var DRV='.q,.derive,.h7-quick,.jp-seq,.rd,.st-wrap,.pv-wrap,.ck-wrap,.jp-rv,.jp-sort,.mm-wrap,.wgrid,.tlx';
 document.querySelectorAll('.page').forEach(p=>{var n=0;p.querySelectorAll(DRV).forEach(e=>{if(!e.parentElement.closest(DRV))n++;});if(n>1)o.drivers2.push([p.id,n]);});
@@ -73,7 +76,7 @@ pg.querySelectorAll('svg').forEach(function(sv){
   var k=sr.width/((sv.viewBox&&sv.viewBox.baseVal&&sv.viewBox.baseVal.width)||sr.width);
   var marks=[].slice.call(sv.querySelectorAll('line,path,polyline,circle')).filter(vis);
   ts.forEach(function(t){var a=R(t),band={left:a.left+a.width*.08,right:a.right-a.width*.08,top:a.top+a.height*.18,bottom:a.bottom-a.height*.18};var hit=0;
-    marks.forEach(function(e){if(hit)return;var cs=getComputedStyle(e);if(cs.stroke==='none'&&e.tagName!=='circle')return;var b0=R(e),sw=(parseFloat(cs.strokeWidth)||0)*k/2;
+    marks.forEach(function(e){if(hit)return;var cs=getComputedStyle(e);if(cs.stroke==='none'&&e.tagName!=='circle')return;var sc=(cs.stroke.match(/[\d.]+/g)||[]).map(Number);if(e.tagName!=='circle'&&sc.length>=3&&(sc[0]+sc[1]+sc[2])/3>215&&(sc.length<4||sc[3]>0.3))return;/* 浅色网格线压在字下面看得清，不算 */var b0=R(e),sw=(parseFloat(cs.strokeWidth)||0)*k/2;
       var b={left:b0.left-sw,right:b0.right+sw,top:b0.top-sw,bottom:b0.bottom+sw,width:b0.width+2*sw,height:b0.height+2*sw};
       var thin=(b.height<=8&&b.width>a.width*.3)||(b.width<=8&&b.height>a.height*.6),dot=(e.tagName==='circle'&&b.width<30);
       if(dot){var cx=(a.left+a.right)/2,cy=(a.top+a.bottom)/2;if(b.left<=cx&&cx<=b.right&&b.top<=cy&&cy<=b.bottom&&b.width>=a.width*.9)return;}
@@ -128,7 +131,8 @@ def main():
             ov += [[pid] + x for x in r['svg']]; clip += [[pid, x] for x in r['clip']]; wrap += [[pid, x] for x in r['wrap']]
         o['chrome'] = [c for c in chrome if c[4] == 'FAIL']; o['chrome_warn'] = [c for c in chrome if c[4] != 'FAIL']
         o['svg_overlap'], o['svg_clip'], o['tex_wrap'] = ov, clip, wrap
-        tt_ok = (o['tt'] == 0) if kind == 'review' else (o['tt'] == 1200)
+        need = {'new': 1200, 'review': 0, 'topic': 0, 'report': 0}.get(kind)
+        tt_ok = True if need is None else o['tt'] == need
         mm_ok = all(m[1] for m in o['mm'])
         fails = {
             'over': bool(o['over']), 'fit': not all(v in ('1.0000', '1') for v in o['fit'].values()),
@@ -139,7 +143,7 @@ def main():
         o['WARN'] = [k for k in ('svg_overlap', 'svg_clip', 'tex_wrap', 'chrome_warn') if o[k]]
         o['PASS'] = not o['FAIL']
         print(json.dumps(o, ensure_ascii=False, indent=1))
-        if o['FAIL']: print('✗ 没过的闸门：' + '、'.join(o['FAIL']) + ('（--type %s：计时合计应为 %d，现在 %d）' % (kind, 0 if kind == 'review' else 1200, o['tt']) if 'tt' in o['FAIL'] else ''), file=sys.stderr)
+        if o['FAIL']: print('✗ 没过的闸门：' + '、'.join(o['FAIL']) + ('（--type %s：计时合计应为 %d，现在 %d）' % (kind, need, o['tt']) if 'tt' in o['FAIL'] else ''), file=sys.stderr)
         if o['WARN']: print('⚠ 软提示（逐条打开截图亲眼看，确认没问题才算过）：' + '、'.join(o['WARN']), file=sys.stderr)
         if shots:
             os.makedirs(shots, exist_ok=True)

@@ -1,5 +1,10 @@
 {
   "dependencies": {
-    "katex": "^0.16.11"
+    "katex": "^0.16.11",
+    "xlsx": "^0.18.5"
+  },
+  "scripts": {
+    "test": "node tests/test_packs.js",
+    "make:example": "node studio/cli.mjs"
   }
 }

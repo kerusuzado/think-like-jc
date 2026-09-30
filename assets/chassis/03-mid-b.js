@@ -568,3 +568,4 @@ var DISC = function(){                          // b² − 4ac
 
 /* 步骤数据从此只剩：line + 可选 dur/exit/absorb/cancel/syncNew。
    引擎按 id 差异自动派角色：同 id 同字=移动 · 同 id 换字=翻牌 ·
+   新 id=显现 · 旧 id=退场。 */

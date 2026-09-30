@@ -26,8 +26,9 @@
     var cur = null, field = null, block = null;          // block: "meta" | page 对象
     function known(k) {
       if (block === "meta") return schema.metaKeys.indexOf(k) >= 0;
-      var t = schema.types[cur.type];
-      return !!t && (t.keys.indexOf(k) >= 0 || /^卡\d$|^叶\d$|^枝\d$|^列\d$/.test(k) && t.keys.indexOf(k.replace(/\d$/, "N")) >= 0);
+      var t = schema.types[cur.type]; if (!t) return false;
+      if (t.keys.indexOf(k) >= 0) return true;
+      var nb = k.replace(/\d+$/, "N"); return nb !== k && t.keys.indexOf(nb) >= 0;      // 编号字段：卡1 卡2 → 卡N
     }
     function target() { return block === "meta" ? meta : cur.f; }
     for (var i = 0; i < lines.length; i++) {
@@ -55,6 +56,8 @@
       if (field.items.length) field.items[field.items.length - 1].text += "\n" + s.trim();   // 列表项的续行
       else field.value += (field.value ? "\n" : "") + s.trim();
     }
+    function tidy(o) { for (var k in o) if (o[k] && typeof o[k] === "object" && "value" in o[k]) o[k].value = o[k].value.replace(/\s+$/, ""); }   // 空行留下的尾部换行去掉
+    tidy(meta); pages.forEach(function (p) { tidy(p.f); });
     return { meta: meta, pages: pages, errors: errors, warnings: warnings };
   }
 

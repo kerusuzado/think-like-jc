@@ -19,7 +19,7 @@
     return o;
   }
   /* y=… → JS 表达式；返回 {js, tex} 或 {err} */
-  function expr(s) {
+  function expr(s, vars) {
     var tex = s.trim(), e = tex.replace(/^y\s*=\s*/, "");
     e = e.replace(/\\[td]?frac\s*\{([^{}]*)\}\s*\{([^{}]*)\}/g, "(($1)/($2))").replace(/\\sqrt\s*\{([^{}]*)\}/g, "Math.sqrt($1)")
       .replace(/√\s*\(/g, "Math.sqrt(").replace(/\\left|\\right/g, "").replace(/\\cdot|×|\\times/g, "*").replace(/÷/g, "/").replace(/[−–]/g, "-")
@@ -28,12 +28,23 @@
       .replace(/\b(sin|cos|tan|log)\(/g, "Math.$1(").replace(/\bln\(/g, "Math.log(");
     e = e.replace(/(\d)\s*(x|\(|Math)/g, "$1*$2").replace(/\)\s*(\(|x|\d|Math)/g, ")*$1").replace(/x\s*(\(|\d|Math)/g, "x*$1").replace(/x\s*x/g, "x*x");
     e = e.replace(/\^/g, "**");
-    try { var f = new Function("x", "return " + e); [0.37, 1.3, -2.1].forEach(function (x) { f(x); }); }
+    vars = vars || [];
+    vars.forEach(function (v) { e = e.replace(new RegExp("(^|[^A-Za-z.])" + v + "(?=x)", "g"), "$1" + v + "*").replace(new RegExp("x(?=" + v + "(?![A-Za-z]))", "g"), "x*"); });
+    vars.forEach(function (v) { e = e.replace(new RegExp("(\\d)\\s*" + v + "\\b", "g"), "$1*" + v).replace(new RegExp("\\b" + v + "\\s*\\(", "g"), v + "*("); });
+    try { var f = new Function(["x"].concat(vars).join(","), "return " + e); [0.37, 1.3, -2.1].forEach(function (x) { f.apply(null, [x].concat(vars.map(function () { return 1.7; }))); }); }
     catch (err) { return { err: "看不懂这个式子：" + s }; }
-    if (/[^\sx\d.+\-*/()Mathsqrcoinlgbp,PIE]/.test(e.replace(/Math\.\w+/g, ""))) return { err: "式子里有看不懂的字：" + s };
+    var rest = e.replace(/Math\.\w+/g, ""); vars.forEach(function (v) { rest = rest.replace(new RegExp("\\b" + v + "\\b", "g"), ""); });
+    if (/[^\sx\d.+\-*/()Mathsqrcoinlgbp,PIE]/.test(rest)) return { err: "式子里有看不懂的字：" + s + "（滑条变量要在「拖:」里声明）" };
     return { js: e, tex: /^y\s*=/.test(tex) ? tex : "y=" + tex };
   }
 
+  /* 数值或含滑条变量的式子 → 数字，或 {"$": JS 式子}（运行时按滑条值算） */
+  function val(t, vars) {
+    t = String(t).trim().replace(/[−–]/g, "-");
+    if (/^-?\d+(\.\d+)?$/.test(t)) return +t;
+    if (vars && vars.length) { var r = expr(t, vars); if (!r.err) return { $: r.js }; }
+    return NaN;
+  }
   function build(field, cap, ctx) {
     var head = (field.value || "").trim(), items = field.items || [], errs = [];
     var id = "fg" + (ctx.pid || "") .replace(/[^\w]/g, "") + "_" + (seq++), W = ctx.wide ? 560 : 340;
@@ -77,13 +88,16 @@
       items.forEach(function (it) {
         var o = opts(it.text), t = o.rest, it2 = { key: o.key, reveal: o.reveal, color: o.color, dash: o.dash, hollow: o.hollow };
         if ((m = t.match(/^(?:曲线|函数|直线)\s*(.+)$/))) {
-          var fr = m[1].match(new RegExp("从\\s*" + NUM + "\\s*到\\s*" + NUM)); var ex = m[1].replace(/从.*$/, "").replace(/名\s*.*$/, "").trim();
-          var r = expr(ex); if (r.err) return E(it.line, r.err, "写成 y=x^2-2x-3 这样（乘号可以省略，分数写 \\frac{a}{b}）");
-          it2.kind = "curve"; it2.js = r.js; it2.label = /不标|无标签/.test(m[1]) ? "" : r.tex; if (fr) { it2.from = num(fr[1]); it2.to = num(fr[2]); }
-        } else if ((m = t.match(new RegExp("^点\\s*([A-Za-z\\u4e00-\\u9fa5]'?)?\\s*[（(]\\s*" + NUM + "\\s*[,，]\\s*" + NUM + "\\s*[)）](.*)$")))) {
-          it2.kind = "point"; it2.name = m[1] || ""; it2.x = num(m[2]); it2.y = num(m[3]); if (/坐标/.test(m[4])) it2.coord = (m[1] || "") + "(" + m[2] + "," + m[3] + ")";
-        } else if ((m = t.match(new RegExp("^竖线\\s*x\\s*=\\s*" + NUM + "\\s*(.*)$")))) { it2.kind = "vline"; it2.v = num(m[1]); it2.label = m[2] || ""; it2.dash = true; }
-        else if ((m = t.match(new RegExp("^横线\\s*y\\s*=\\s*" + NUM + "\\s*(.*)$")))) { it2.kind = "hline"; it2.v = num(m[1]); it2.label = m[2] || ""; it2.dash = true; }
+          var fr = m[1].match(/从\s*(.+?)\s*到\s*(.+?)\s*(?:名|不标|无标签|$)/); var ex = m[1].replace(/从.*$/, "").replace(/名\s*.*$/, "").replace(/不标|无标签/, "").trim();
+          var r = expr(ex, ctx.vars); if (r.err) return E(it.line, r.err, "写成 y=x^2-2x-3 这样（乘号可以省略，分数写 \\frac{a}{b}）");
+          it2.kind = "curve"; it2.js = r.js; it2.label = /不标|无标签/.test(m[1]) || (ctx.vars && ctx.vars.length) ? "" : r.tex;
+          if (fr) { it2.from = val(fr[1], ctx.vars); it2.to = val(fr[2], ctx.vars); if (it2.from !== it2.from || it2.to !== it2.to) return E(it.line, "「从 … 到 …」看不懂", "例：从 -1 到 3，或含滑条变量：从 (20-L)/2 到 10"); }
+        } else if ((m = t.match(/^点\s*([A-Za-z\u4e00-\u9fa5]'?)?\s*[（(]\s*([^,，()（）]+(?:\([^()]*\))?[^,，()（）]*)\s*[,，]\s*(.+?)\s*[)）](.*)$/))) {
+          it2.kind = "point"; it2.name = m[1] || ""; it2.x = val(m[2], ctx.vars); it2.y = val(m[3], ctx.vars);
+          if (it2.x !== it2.x || it2.y !== it2.y) return E(it.line, "点的坐标看不懂：" + t, "例：点 A(1,-4)");
+          if (/坐标/.test(m[4])) it2.coord = (m[1] || "") + "(" + m[2] + "," + m[3] + ")";
+        } else if ((m = t.match(/^竖线\s*x\s*=\s*(\S+)\s*(.*)$/))) { it2.kind = "vline"; it2.v = val(m[1], ctx.vars); it2.label = m[2] || ""; it2.dash = true; if (it2.v !== it2.v) return E(it.line, "竖线位置看不懂：" + t, "例：竖线 x=1 对称轴"); }
+        else if ((m = t.match(/^横线\s*y\s*=\s*(\S+)\s*(.*)$/))) { it2.kind = "hline"; it2.v = val(m[1], ctx.vars); it2.label = m[2] || ""; it2.dash = true; if (it2.v !== it2.v) return E(it.line, "横线位置看不懂：" + t, "例：横线 y=0"); }
         else if ((m = t.match(new RegExp("^线段\\s*[（(]" + NUM + "[,，]" + NUM + "[)）]\\s*[-—到]\\s*[（(]" + NUM + "[,，]" + NUM + "[)）]")))) { it2.kind = "seg"; it2.a = [num(m[1]), num(m[2])]; it2.b = [num(m[3]), num(m[4])]; }
         else if ((m = t.match(new RegExp("^带\\s*" + RANGE.source)))) { it2.kind = "band"; it2.a = num(m[1]); it2.b = num(m[2]); }
         else if ((m = t.match(new RegExp("^标注\\s*[（(]" + NUM + "[,，]" + NUM + "[)）]\\s*(.+)$")))) { it2.kind = "note"; it2.x = num(m[1]); it2.y = num(m[2]); it2.text = m[3]; }
@@ -150,6 +164,6 @@
     return { html: html, js: "FG.reg(" + JSON.stringify(id) + "," + JSON.stringify(S) + ");", errors: errs, keys: S.items.map(function (x) { return x.key; }).filter(Boolean) };
   }
 
-  var api = { build: build, expr: expr };
+  var api = { build: build, expr: expr, val: val };
   if (typeof module !== "undefined") module.exports = api; else root.TLJCFigures = api;
 })(this);

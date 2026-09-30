@@ -50,8 +50,8 @@
     var css = dirs.map(function (d) { return d.css || ""; }).join("\n") + (o.css ? "\n/* ── 本课件专属样式 ── */\n" + o.css : "");
     var js = dirs.map(function (d) { return d.js || ""; }).join("\n");
     var data = "";
-    if (o.data) data += "var JP_DATA = " + JSON.stringify(o.data) + ";\n";
-    if (o.words) data += "var JP_WORDS = " + JSON.stringify(o.words) + ";\n";
+    if (o.data) data += "window.JP_DATA = " + JSON.stringify(o.data).replace(/</g, "\\u003c") + ";\n";
+    if (o.words) data += "window.JP_WORDS = " + JSON.stringify(o.words).replace(/</g, "\\u003c") + ";\n";
     var head = R.chassis.head.replace("__DOCTITLE__", function () { return o.title; }).replace("/* __BRAND_CSS__ */", function () { return brandCss(o.brand); });
     head = head.replace("</style>", function () { return css + "\n</style>"; });
     return [head, o.pages, R.chassis.midA, o.chapters, R.chassis.midB, o.derive || "", R.chassis.mindmap, R.chassis.labinfra, data + js, o.labs || "", R.chassis.tail].join("\n");

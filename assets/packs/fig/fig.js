@@ -11,7 +11,8 @@ var FG = (function(){
   var COLOR = { "绿":0, "蓝":1, "红":2, "黄":3, "金":3, "紫":4, "青":5 };
   function col(name, i){ if (name && COLOR[name] != null) return C.c[COLOR[name]]; if (name && /^#|^var\(/.test(name)) return name; return C.c[(i || 0) % C.c.length]; }
   function el(tag, a, p){ var e = sv(tag, a || {}); if (p) p.appendChild(e); return e; }
-  function T(g, x, y, t, o){ o = o || {}; var e = el("text", {x:x, y:y, "font-size":o.s || 14, fill:o.c || C.ink, "text-anchor":o.a || "middle", "dominant-baseline":"middle",
+  var FSK = 1;                                  // 字号倍率：实验台的大图用 1.3，别处 1
+  function T(g, x, y, t, o){ o = o || {}; var e = el("text", {x:x, y:y, "font-size":(o.s || 14) * FSK, fill:o.c || C.ink, "text-anchor":o.a || "middle", "dominant-baseline":"middle",
       "font-weight":o.w || 500, "font-style":o.i ? "italic" : "normal", "font-family":o.i ? "'Times New Roman',serif" : "inherit", "class":"fg-t"}, g); e.textContent = t; return e; }
   /* 层：bg（halo）· base · fg · lbl；hl 组 */
   function layers(svg){ svg.innerHTML = ""; var L = {}; ["bg","base","fg","lbl"].forEach(function(k){ L[k] = el("g", {}, svg); }); return L; }
@@ -49,10 +50,11 @@ var FG = (function(){
     for (var gy = Math.ceil(y0 / st) * st; gy <= y1; gy += st) el("line", {x1:X(x0), y1:Y(gy), x2:X(x1), y2:Y(gy), stroke:C.grid, "stroke-width":1}, L.base);
     el("line", {x1:X(x0), y1:Y(0), x2:X(x1) + 6, y2:Y(0), stroke:C.axis, "stroke-width":1.6}, L.base); arrowHead(L.base, X(x1) + 12, Y(0), 0, C.axis, 8);
     el("line", {x1:X(0), y1:Y(y0), x2:X(0), y2:Y(y1) - 6, stroke:C.axis, "stroke-width":1.6}, L.base); arrowHead(L.base, X(0), Y(y1) - 12, -Math.PI/2, C.axis, 8);
-    T(L.lbl, X(x1) + 6, Y(0) + 14, "x", {i:true, s:15}); T(L.lbl, X(0) + 12, Y(y1) - 10, "y", {i:true, s:15}); T(L.lbl, X(0) - 10, Y(0) + 13, "O", {i:true, s:14});
+    T(L.lbl, X(x1) + 6, Y(0) + 14, "x", {i:true, s:15}); T(L.lbl, X(0) + 12, Y(y1) - 10, "y", {i:true, s:15}); var near = function(k, v){ return S.items.some(function(it){ return (it.kind === k || (k === "pt" && it.kind === "point")) && typeof (k === "pt" ? it.x : it.v) === "number" && (k === "pt" ? Math.abs(it.x) < st * .3 && Math.abs(it.y) < st * .3 : Math.abs(it.v - v) < 1e-9); }); };
+    if (!near("pt")) T(L.lbl, X(0) - 10, Y(0) + 13, "O", {i:true, s:14});        // 原点上有点就不写 O，免得字压点
     var ts = S.tick || st;
-    for (var tx = Math.ceil(x0 / ts) * ts; tx <= x1 - ts/2; tx += ts) if (Math.abs(tx) > 1e-9){ el("line", {x1:X(tx), y1:Y(0) - 3, x2:X(tx), y2:Y(0) + 3, stroke:C.axis}, L.base); T(L.base, X(tx), Y(0) + 14, fmt(tx), {s:11.5, c:C.sub, w:400}); }
-    for (var ty = Math.ceil(y0 / ts) * ts; ty <= y1 - ts/2; ty += ts) if (Math.abs(ty) > 1e-9){ el("line", {x1:X(0) - 3, y1:Y(ty), x2:X(0) + 3, y2:Y(ty), stroke:C.axis}, L.base); T(L.base, X(0) - 12, Y(ty), fmt(ty), {s:11.5, c:C.sub, w:400, a:"end"}); }
+    for (var tx = Math.ceil(x0 / ts) * ts; tx <= x1 - ts/2; tx += ts) if (Math.abs(tx) > 1e-9){ el("line", {x1:X(tx), y1:Y(0) - 3, x2:X(tx), y2:Y(0) + 3, stroke:C.axis}, L.base); if (!near("vline", tx)) T(L.base, X(tx), Y(0) + 14, fmt(tx), {s:11.5, c:C.sub, w:400}); }
+    for (var ty = Math.ceil(y0 / ts) * ts; ty <= y1 - ts/2; ty += ts) if (Math.abs(ty) > 1e-9){ el("line", {x1:X(0) - 3, y1:Y(ty), x2:X(0) + 3, y2:Y(ty), stroke:C.axis}, L.base); if (!near("hline", ty)) T(L.base, X(0) - 12, Y(ty), fmt(ty), {s:11.5, c:C.sub, w:400, a:"end"}); }
     var clip = "fgc" + Math.random().toString(36).slice(2, 7);
     var defs = el("defs", {}, svg); var cp = el("clipPath", {id:clip}, defs); el("rect", {x:pad - 4, y:pad - 4, width:W - 2*pad + 8, height:H - 2*pad + 8}, cp);
     var ci = 0;
@@ -65,8 +67,8 @@ var FG = (function(){
         if (it.label){ var lx = xb - (xb - xa) * .12, ly = f(lx); if (isFinite(ly)) ovl(ov, [W, H], X(lx) + 6, Math.max(pad + 10, Math.min(H - pad - 10, Y(ly) - 14)), KX(it.label), "fg-lbl"); }
       } else if (it.kind === "point"){
         n = el("circle", {cx:X(it.x), cy:Y(it.y), r:4.8, fill:it.hollow ? "#fff" : c, stroke:c, "stroke-width":2}, G.g);
-        if (it.name) T(G.g, X(it.x) + (it.dx || 10), Y(it.y) + (it.dy || -12), it.name, {i:/^[A-Za-z]'?$/.test(it.name), s:15, w:700, a:"start"});
-        if (it.coord) ovl(ov, [W, H], X(it.x) + 10, Y(it.y) + 16, KX(it.coord), "fg-lbl fg-sm");
+        if (it.name && !it.coord) T(G.g, X(it.x) + (it.dx || 10), Y(it.y) + (it.dy || -12), it.name, {i:/^[A-Za-z]'?$/.test(it.name), s:15, w:700, a:"start"});
+        if (it.coord) ovl(ov, [W, H], X(it.x) + 10, Y(it.y) - 16, KX(it.coord), "fg-lbl fg-sm L");
       } else if (it.kind === "vline" || it.kind === "hline"){
         var v = it.kind === "vline";
         n = el("line", v ? {x1:X(it.v), y1:Y(y0), x2:X(it.v), y2:Y(y1)} : {x1:X(x0), y1:Y(it.v), x2:X(x1), y2:Y(it.v)}, G.g);
@@ -240,16 +242,20 @@ var FG = (function(){
   function fmtV(v){ return typeof v === "number" ? fmt(v) : v; }
   function readOut(tpl, V){
     return tpl.replace(/\{([^{}?]+)\?([^{}:]*):([^{}]*)\}/g, function(_, c, a, b){ return evalIn(c, V) ? a : b; })
-              .replace(/\{([^{}]+)\}/g, function(_, e){ return fmtV(evalIn(e, V)); });
+              .replace(/\{([^{}]+)\}/g, function(_, e){ var v = fmtV(evalIn(e, V)); return typeof v === "string" ? v.replace("−", "-") : v; })
+              .replace(/&/g, "&amp;").replace(/</g, "&lt;")
+              .replace(/\$([^$]+)\$/g, function(_, t){ t = t.replace(/&lt;/g, "<").replace(/&amp;/g, "&").replace(/\+\s*-/g, "-").replace(/-\s*-/g, "+");
+                try { return window.katex ? katex.renderToString(t, {throwOnError: false}) : t; } catch (e) { return t; } })
+              .replace(/\*\*([^*]+)\*\*/g, "<b>$1</b>");
   }
   function widget(id, W){
     var box = document.getElementById(id); if (!box) return;
     var V = {}; W.vars.forEach(function(v){ V[v.k] = v.val; });
-    var html = '<div class="wg-title">▶ 拖一拖：' + W.title + '</div><div class="wg-ctl">';
+    var html = '<div class="wg-title">▶ ' + (/^拖一拖/.test(W.title) ? W.title : "拖一拖：" + W.title) + '</div><div class="wg-ctl">';
     W.vars.forEach(function(v){ html += '<label>' + v.label + ' <input type="range" min="' + v.min + '" max="' + v.max + '" step="' + v.step + '" value="' + v.val + '" data-k="' + v.k + '"><b data-o="' + v.k + '">' + fmt(v.val) + (v.unit || "") + '</b></label>'; });
     html += '</div><div class="wg-fig"><svg id="' + id + 'S" viewBox="0 0 ' + W.fig.W + ' ' + W.fig.H + '"></svg><div class="ovl" id="' + id + 'SO"></div></div><div class="wg-read"></div>';
     box.innerHTML = html;
-    function upd(){ var svg = document.getElementById(id + "S"), ov = document.getElementById(id + "SO"); ov.innerHTML = ""; DRAW[W.fig.type](svg, ov, resolve(W.fig, V)); box.querySelector(".wg-read").innerHTML = readOut(W.read || "", V); }
+    function upd(){ var svg = document.getElementById(id + "S"), ov = document.getElementById(id + "SO"); ov.innerHTML = ""; FSK = W.fig.fs || 1; try { DRAW[W.fig.type](svg, ov, resolve(W.fig, V)); } finally { FSK = 1; } box.querySelector(".wg-read").innerHTML = readOut(W.read || "", V); }
     [].forEach.call(box.querySelectorAll("input"), function(inp){ inp.addEventListener("input", function(){ var k = inp.dataset.k, v = W.vars.filter(function(q){ return q.k === k; })[0]; V[k] = parseFloat(inp.value); box.querySelector('[data-o="' + k + '"]').textContent = fmt(V[k]) + (v.unit || ""); upd(); }); });
     upd(); if (typeof labs !== "undefined") labs.push(function(){ if (box.closest(".page.is-active")) upd(); });
   }
