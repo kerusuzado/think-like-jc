@@ -160,7 +160,7 @@ var FG = (function(){
 
   /* ── 柱状图 / 折线图（真值；纵轴自动取整） ── */
   function chart(svg, ov, S){
-    var W = S.W, H = S.H, L = layers(svg), pl = 46, pr = 16, pt = 22, pb = 40;
+    var W = S.W, H = S.H, L = layers(svg), pl = 46, pr = 16, pt = S.unit ? 32 : 22, pb = 40;
     var series = S.series.length ? S.series : ["值"], n = S.items.length, max = 0, min = 0;
     S.items.forEach(function(it){ it.vals.forEach(function(v){ max = Math.max(max, v); min = Math.min(min, v); }); });
     if (S.ymax != null) max = S.ymax; if (S.ymin != null) min = S.ymin;
@@ -199,17 +199,24 @@ var FG = (function(){
     if (S.xr[0] < 0) el("rect", {x:pad, y:Y0 - 7, width:Math.min(X(1), W - pad) - pad, height:14, fill:"#fbf1e3"}, L.base);
     if (S.xr[1] > 0) el("rect", {x:Math.max(X(1), pad), y:Y0 - 7, width:W - pad - Math.max(X(1), pad), height:14, fill:"#e9f2f7"}, L.base);
     el("line", {x1:pad, y1:Y0, x2:W - pad + 8, y2:Y0, stroke:C.axis, "stroke-width":1.8}, L.base); arrowHead(L.base, W - pad + 14, Y0, 0, C.axis, 9);
-    var st = S.step || 100, lab = S.lab || st * 5;
+    var st = S.step || 100, lab = S.lab || (st === 1 || st === 2 ? st * 5 : st * 5);
     for (var y = Math.ceil(S.xr[0] / st) * st; y <= S.xr[1]; y += st){ var yy = y === 0 ? 1 : y, big = y % lab === 0;
       el("line", {x1:X(yy), y1:Y0 - (big ? 7 : 4), x2:X(yy), y2:Y0 + (big ? 7 : 4), stroke:C.axis, "stroke-width":big ? 1.5 : 1}, L.base);
       if (big) T(L.base, X(yy), Y0 + 19, yl(yy), {s:11.5, c:C.sub, w:400}); }
     if (S.xr[0] < 0 && S.xr[1] > 0) el("line", {x1:X(1), y1:Y0 - 11, x2:X(1), y2:Y0 + 11, stroke:"#C1443B", "stroke-width":2}, L.base);
-    T(L.lbl, W - pad, 12, "1 格 = " + st + " 年", {s:11.5, c:C.sub, a:"end"});
-    var lane = 0;
+    T(L.lbl, pad, 12, "1 格 = " + st + " 年", {s:11.5, c:C.sub, a:"start"});
+    var lanes = [], NL = Math.max(3, Math.floor((Y0 - 34) / 30));     // 贪心分车道：标签横向不重叠才放进同一条
+    function laneOf(it){
+      var txt = it.kind === "event" ? yl(it.a) + " " + it.label : it.label, w = 0; for (var q = 0; q < txt.length; q++) w += txt.charCodeAt(q) > 255 ? 12.5 : 7;
+      var cx = it.kind === "event" ? X(it.a) : (X(it.a) + X(it.b)) / 2, an = cx > W * .72 ? "end" : cx < W * .28 ? "start" : "middle";
+      var a = an === "end" ? cx + 6 - w : an === "start" ? cx - 6 : cx - w / 2, b = a + w;
+      for (var k = 0; k < NL; k++){ var ok = (lanes[k] || []).every(function(r){ return b + 8 < r[0] || a - 8 > r[1]; }); if (ok){ (lanes[k] = lanes[k] || []).push([a, b]); return k; } }
+      return lanes.length % NL;
+    }
     S.items.forEach(function(it, i){
-      var G = grp(L, it), c = col(it.color, i), n = el("g", {}, G.g), ly = Y0 - 30 - (lane++ % 4) * 30;
-      if (it.kind === "event"){ el("line", {x1:X(it.a), y1:Y0, x2:X(it.a), y2:ly + 8, stroke:"#b7bfb9", "stroke-width":1}, n); el("circle", {cx:X(it.a), cy:Y0, r:4.5, fill:c}, n); T(n, X(it.a), ly, yl(it.a) + " " + it.label, {s:12.5, c:c, w:700}); }
-      else { el("rect", {x:X(it.a), y:ly + 6, width:Math.max(3, X(it.b) - X(it.a)), height:8, rx:3, fill:c, opacity:.85}, n); T(n, (X(it.a) + X(it.b)) / 2, ly - 4, it.label, {s:12.5, c:c, w:700}); }
+      var G = grp(L, it), c = col(it.color, i), n = el("g", {}, G.g), ly = Y0 - 30 - laneOf(it) * 30;
+      if (it.kind === "event"){ el("line", {x1:X(it.a), y1:Y0, x2:X(it.a), y2:ly + 8, stroke:"#b7bfb9", "stroke-width":1}, n); el("circle", {cx:X(it.a), cy:Y0, r:4.5, fill:c}, n); var ex = X(it.a), an = ex > W * .72 ? "end" : ex < W * .28 ? "start" : "middle"; T(n, ex + (an === "end" ? 6 : an === "start" ? -6 : 0), ly, yl(it.a) + " " + it.label, {s:12.5, c:c, w:700, a:an}); }
+      else { el("rect", {x:X(it.a), y:ly + 6, width:Math.max(3, X(it.b) - X(it.a)), height:8, rx:3, fill:c, opacity:.85}, n); var mx = (X(it.a) + X(it.b)) / 2, an2 = mx > W * .72 ? "end" : mx < W * .28 ? "start" : "middle"; T(n, an2 === "end" ? X(it.b) : an2 === "start" ? X(it.a) : mx, ly - 4, it.label, {s:12.5, c:c, w:700, a:an2}); }
       halo(G.halo, n);
     });
     declutter(svg);

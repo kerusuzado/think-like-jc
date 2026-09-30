@@ -65,12 +65,13 @@
 
   /* ── 步进题（例题 / 练习 / 讲题 / 精选）── */
   function question(p, ctx, o) {
-    var used = {}, wide = /是|宽/.test(f(p, "宽图")) || /^原文/.test(f(p, "图"));
+    var tcols = /^表格/.test(f(p, "图")) ? Math.max.apply(0, items(p, "图").map(function (i) { return cells(i.text).length; }).concat([0])) : 0;
+    var used = {}, wide = /是|宽/.test(f(p, "宽图")) || /^原文/.test(f(p, "图")) || tcols >= 3;       // 三列以上的表放宽栏，免得一字一行
     var fig = figure(p, ctx, "", wide);
     var steps = items(p, "步骤"), tm = parseTime(f(p, "计时"), ctx, lineOf(p, "计时"));
     if (o.timed && !tm && steps.length === 0) ctx.err(p.line, "练习页要写计时", "加一行「计时: 4:00」");
     if (!o.timed && tm && ctx.scene !== "微论坛") { ctx.warn(lineOf(p, "计时"), "这一页不计时，计时已忽略", "要计时请用「练习」页"); tm = null; }
-    if (tm) ctx.timers += tm[0] * 60 + tm[1];
+    if (tm) { ctx.timers += tm[0] * 60 + tm[1]; ctx.timerList.push({ line: lineOf(p, "计时"), sec: tm[0] * 60 + tm[1] }); }
     var li = stepsHtml(steps, ctx, used);
     checkKeys(ctx, used, fig);
     var keys = cells(f(p, "小问") || "").filter(Boolean);
@@ -254,7 +255,7 @@
   function render(doc, env) {
     env = env || {};
     var meta = {}; Object.keys(doc.meta).forEach(function (k) { if (k[0] !== "_") meta[k] = doc.meta[k].value; });
-    var ctx = { meta: meta, brand: env.brand, errors: [], warnings: [], figJs: [], deriveJs: [], labsJs: [], assets: {}, timers: 0, refs: [], levelsUsed: [], levelsHave: [], kick: {}, pageLines: {}, R: env.R || null, fill: env.fill || null };
+    var ctx = { meta: meta, brand: env.brand, errors: [], warnings: [], figJs: [], deriveJs: [], labsJs: [], assets: {}, timers: 0, refs: [], levelsUsed: [], levelsHave: [], kick: {}, pageLines: {}, timerList: [], R: env.R || null, fill: env.fill || null };
     ctx.err = function (line, msg, fix) { ctx.errors.push({ line: line, msg: msg, fix: fix }); };
     ctx.warn = function (line, msg, fix) { ctx.warnings.push({ line: line, msg: msg, fix: fix }); };
     doc.errors.forEach(function (e) { ctx.errors.push(e); }); doc.warnings.forEach(function (e) { ctx.warnings.push(e); });
@@ -286,7 +287,17 @@
       ctx.refs.forEach(function (r, i) { if (i && r !== ctx.refs[i - 1] + 1) ctx.warn(null, "文献编号不连续：[" + ctx.refs[i - 1] + "] 后面是 [" + r + "]", "全课文献从 [1] 起连续编号"); });
     }
     var need = { "新授课": 1200, "专题课": 0, "讲评课": 0, "微论坛": null, "成绩分析": 0 }[scene];
-    if (need != null && ctx.timers !== need) ctx.err(null, "全课计时器合计 " + ctx.timers + " 秒，" + scene + "要求 " + need + " 秒", need ? "调整各练习页的计时，加起来正好 20:00" : scene + "不设计时器，删掉「计时:」");
+    if (need != null && ctx.timers !== need) {
+      var mmss = function (t) { return Math.floor(t / 60) + ":" + (t % 60 < 10 ? "0" : "") + t % 60; }, TL = ctx.timerList, fix;
+      if (!need) fix = scene + "不设计时器，删掉第 " + TL.map(function (t) { return t.line; }).join("、") + " 行的「计时:」";
+      else if (!TL.length) fix = "新授课要有练习页（@页 练习）并写「计时:」，加起来 20:00";
+      else {                                   // 按原比例摊到 20:00，取整到 30 秒，余数给最后一页
+        var sug = TL.map(function (t) { return Math.max(60, Math.round(t.sec / ctx.timers * need / 30) * 30); }), rest = need - sug.reduce(function (a, b) { return a + b; }, 0);
+        sug[sug.length - 1] += rest; if (sug[sug.length - 1] < 60) sug = TL.map(function (_, i) { return i < TL.length - 1 ? Math.floor(need / TL.length / 30) * 30 : need - Math.floor(need / TL.length / 30) * 30 * (TL.length - 1); });
+        fix = "现在是 " + TL.map(function (t) { return "第 " + t.line + " 行 " + mmss(t.sec); }).join("、") + "（共 " + mmss(ctx.timers) + "）。直接改成 " + TL.map(function (t, i) { return "第 " + t.line + " 行 计时: " + mmss(sug[i]); }).join("；") + "（共 20:00）";
+      }
+      ctx.err(null, "全课计时器合计 " + mmss(ctx.timers) + "，" + scene + "要求 " + (need ? "正好 20:00" : "没有计时器"), fix);
+    }
     var chJs = "var CHAPTERS = " + JSON.stringify(chapters) + ";";
     return { pages: out.join("\n"), chapters: chJs, derive: ctx.deriveJs.join("\n"), labs: "(function(){\n" + ctx.figJs.join("\n") + "\n})();", assets: Object.keys(ctx.assets),
       title: meta.标题 || "课件", scene: scene, timers: ctx.timers, errors: ctx.errors, warnings: ctx.warnings, meta: meta, pageLines: ctx.pageLines };

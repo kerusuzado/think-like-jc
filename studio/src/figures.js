@@ -146,7 +146,7 @@
       });
     } else if (type === "年代轴") {
       S.type = "years"; S.W = ctx.wide ? 560 : 340; S.H = 230; m = head.match(RANGE); S.xr = m ? [num(m[1]), num(m[2])] : [-1000, 1500];
-      var gg = head.match(/格\s*(\d+)/); S.step = gg ? +gg[1] : Math.max(10, Math.round((S.xr[1] - S.xr[0]) / 20 / 50) * 50 || 100);
+      var gg = head.match(/格\s*(\d+)/), span = S.xr[1] - S.xr[0]; S.step = gg ? +gg[1] : [1, 2, 5, 10, 20, 25, 50, 100, 200, 250, 500, 1000].filter(function (v) { return span / v <= 24; })[0] || 1000;   // 刻度 ≤ 24 格
       items.forEach(function (it) {
         var o = opts(it.text), t = o.rest, it2 = { key: o.key, reveal: o.reveal, color: o.color };
         if ((m = t.match(new RegExp("^事件\\s*" + NUM + "\\s*(.+)$")))) { it2.kind = "event"; it2.a = num(m[1]); it2.label = m[2]; }
