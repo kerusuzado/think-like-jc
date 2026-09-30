@@ -1,0 +1,26 @@
+/* 图形库 FG：图框、halo / reveal 开关、表格图、原文图、原图框 */
+.fg-fig{padding:6px 10px}
+.fg-fig .figwrap,.q.solving .fg-fig .figwrap{width:100%;overflow:visible;position:relative}
+.fg-fig .figwrap > svg{width:100%;height:auto;display:block}
+.fg-fig g.hl{position:static;background:none;outline:none;opacity:0;transition:opacity .35s var(--ease)}
+.fg-fig g.hl.on{opacity:1}
+.fg-fig .figwrap.danger g.hl.on{background:none;outline:none}
+.fg-fig figcaption{margin-top:4px;font-size:13.5px;color:var(--sub);text-align:center}
+.ovl-i.fg-lbl .katex{background:rgba(255,255,255,.9);padding:0 4px;border-radius:4px;font-size:1.05em;color:var(--brand-deep);font-weight:700}
+.ovl-i.fg-sm .katex{font-size:.92em;font-weight:500}
+/* 表格图 */
+table.fg-tb{width:100%;border-collapse:separate;border-spacing:0;background:#fff;border:1px solid var(--line);border-radius:12px;overflow:hidden;font-size:15.5px;line-height:1.5}
+table.fg-tb th{background:var(--brand-soft);color:var(--brand-deep);font-weight:700;padding:6px 10px;border-bottom:1px solid var(--line);text-align:center}
+table.fg-tb td{padding:6px 10px;border-bottom:1px solid #eef0ec;text-align:center}
+table.fg-tb tr:last-child td{border-bottom:none}
+table.fg-tb td.hl,table.fg-tb th.hl{position:static;outline:none;background:transparent;opacity:1;transition:background .3s var(--ease)}
+table.fg-tb td.hl.on,table.fg-tb th.hl.on{background:rgba(250,204,21,.45)}
+table.fg-tb td.hl.rv{color:transparent;background:repeating-linear-gradient(135deg,#f3f5f1 0 6px,#fafbf8 6px 12px)}
+table.fg-tb td.hl.rv.on{color:var(--ink);background:#fff8e1}
+/* 原文图 */
+.fg-text{font-size:15.5px;line-height:1.75;color:var(--ink);text-align:left;background:#fffdf7;border:1px solid #eadfc4;border-radius:12px;padding:10px 14px}
+.fg-text h4{margin:0 0 4px;text-align:center;font-size:16px;color:var(--brand-deep)}
+.fg-text p{margin:0 0 6px;text-indent:2em}
+/* 原图叠框：框的位置按图片百分比 */
+.fg-img{position:relative;display:block;width:100%}
+.fg-img > img{width:100%;height:auto;display:block;border-radius:8px}
