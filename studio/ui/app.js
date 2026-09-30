@@ -185,6 +185,20 @@
     setTimeout(function () { URL.revokeObjectURL(a.href); }, 5000);
   };
 
+  // 提示词：总则 + 格式 + 场景 + 学科 + 示范稿
+  var PR = EX.prompts;
+  Object.keys(PR.scene).forEach(function (k) { var o = document.createElement("option"); o.value = o.textContent = k; $("#prScene").appendChild(o); });
+  Object.keys(PR.subject).forEach(function (k) { var o = document.createElement("option"); o.value = o.textContent = k; $("#prSubj").appendChild(o); });
+  function compose() {
+    var sc = $("#prScene").value, sb = $("#prSubj").value;
+    var t = PR.base.concat([PR.scene[sc], PR.subject[sb], EX.specs[sc] ? "# 示范稿（" + sc + "，照这个格式和密度写；内容换成本课的）\n\n" + EX.specs[sc] : ""]).filter(Boolean).join("\n\n---\n\n");
+    $("#prText").value = t; $("#prLen").textContent = "约 " + Math.round(t.length / 1000) + " 千字";
+  }
+  $("#prScene").onchange = $("#prSubj").onchange = compose;
+  $("#bPr").onclick = function () { compose(); $("#dPr").showModal(); };
+  $("#prCopy").onclick = function () { var t = $("#prText").value; (navigator.clipboard ? navigator.clipboard.writeText(t) : Promise.reject()).then(function () { toast("已复制提示词"); }, function () { $("#prText").select(); document.execCommand("copy"); toast("已复制"); }); };
+  window.TLJC.prompt = function (scene, subject) { $("#prScene").value = scene; $("#prSubj").value = subject; compose(); return $("#prText").value; };
+
   src.value = LS.get("tljc-src") || ""; gutter(); renderRes();
   if (location.hash === "#api") { $("header").hidden = true; $("main").hidden = true; }   // 平台只当引擎用时隐藏界面（自检 iframe 仍在排版）
 })();

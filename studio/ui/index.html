@@ -11,6 +11,7 @@
   <h1>课件装配台</h1><span class="org" id="org"></span>
   <span class="sp"></span>
   <select id="ex" title="载入示范稿"><option value="">载入示范稿…</option></select>
+  <button id="bPr" title="复制给模型的系统提示词">提示词</button>
   <button id="bDl" title="下载单文件 HTML，断网也能放">下载课件</button>
   <button class="go" id="bRun" title="Ctrl + Enter">装配并检查</button>
 </header>
@@ -49,6 +50,13 @@
   </section>
 </main>
 <iframe id="probe" aria-hidden="true" tabindex="-1"></iframe>
+<dialog id="dPr"><form method="dialog">
+  <h2>给模型的提示词</h2>
+  <p class="hint">在 DeepSeek / 千问等模型里新开对话，先粘贴这段，再写你的要求（课题、班级情况）并附上材料。</p>
+  <div class="row"><label>场景 <select id="prScene"></select></label><label>学科 <select id="prSubj"></select></label><span class="n2" id="prLen"></span></div>
+  <textarea id="prText" readonly></textarea>
+  <div class="row end"><button class="btn ghost" value="close">关闭</button><button class="btn" id="prCopy" type="button">复制提示词</button></div>
+</form></dialog>
 <div class="toast" id="toast"></div>
 <script type="application/json" id="tljc-res">@@RES@@</script>
 <script type="application/json" id="tljc-ex">@@EX@@</script>

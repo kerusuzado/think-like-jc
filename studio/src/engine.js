@@ -7,11 +7,18 @@
   var AS = node ? require("./assemble.js") : root.TLJCAssemble, ST = node ? require("./stats.js") : root.TLJCStats;
   var RV = node ? require("./review.js") : root.TLJCReview, RP = node ? require("./report.js") : root.TLJCReport;
 
+  /* 模型常见的「包装」：前面一段解释、```代码框```、后面一段总结 —— 去掉，只留课件稿 */
+  function unwrap(t) {
+    t = String(t || "").replace(/\r\n?/g, "\n");
+    var i = t.search(/^\s*@课件\s*$/m); if (i > 0) t = t.slice(i);
+    return t.split("\n").filter(function (l) { return !/^\s*```/.test(l); }).join("\n");
+  }
   function build(text, env) {
+    text = unwrap(text);
     var doc = P.parse(text, PG.schema), scene = doc.meta.场景 ? doc.meta.场景.value : "";
     var brand = AS.brandOf(env.R, env.brand), M = null, R = null, errors = [], warnings = [];
     if (env.tables && env.tables.A) {
-      M = ST.compute(env.tables, env.statsCfg || {});
+      M = ST.compute(env.tables, Object.assign(cfgOf(doc), env.statsCfg || {}));
       (M.errors || []).forEach(function (e) { errors.push({ line: null, msg: "成绩表：" + e.msg, fix: e.fix }); });
       if (!M.errors || !M.errors.length) R = RV.make(M);
     }
@@ -29,6 +36,17 @@
     var rep = R ? R.report() : null;
     if (rep && scene === "讲评课" && rep.missLow.length) warnings.push({ line: null, msg: "这些小问得分率低于 50% 却没讲到：" + rep.missLow.join(" "), fix: "给它们各加一页「讲题」" });
     return { html: b.html, errors: errors, warnings: warnings, scene: scene, title: out.title, pages: (out.pages.match(/<section class="page/g) || []).length, stats: M, pageLines: out.pageLines || {}, feedback: feedback(errors, warnings) };
+  }
+
+  /* 整课设定里的统计口径：满分: 120 ｜ 阈值: 优秀 85 良好 75 及格 60 低分 40（百分比）｜ 冲: 30 ｜ 保: 40 */
+  function cfgOf(doc) {
+    var v = function (k) { return doc.meta[k] ? String(doc.meta[k].value).trim() : ""; }, c = {};
+    if (+v("满分") > 0) c.full = +v("满分");
+    if (+v("冲") > 0) c.chong = +v("冲"); if (+v("保") > 0) c.bao = +v("保");
+    var t = v("阈值"), m, R = [];
+    if (t) { var re = /(优秀|良好|及格|低分)\s*[:：]?\s*(\d+(?:\.\d+)?)\s*%?/g; while ((m = re.exec(t))) R.push(m[1] === "低分" ? { k: "低分率", max: +m[2] / 100 } : { k: m[1] + "率", min: +m[2] / 100 }); }
+    if (R.length) c.rates = R;
+    return c;
   }
 
   /* 给模型的修改意见（平台可以原样回传给模型） */

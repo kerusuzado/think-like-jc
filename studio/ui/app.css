@@ -73,3 +73,12 @@ iframe#probe{position:fixed;left:-20000px;top:0;width:1400px;height:800px;border
 .toast.on{opacity:1}
 @media (max-width:900px){main{grid-template-columns:1fr;grid-template-rows:55% 45%}.left{border-right:0;border-bottom:1px solid var(--line)}header .org{display:none}}
 a{color:var(--brand)}
+dialog#dPr{border:0;border-radius:16px;padding:0;width:min(860px,94vw);background:var(--panel);color:var(--ink);box-shadow:0 20px 60px rgba(0,0,0,.35)}
+dialog#dPr::backdrop{background:rgba(10,20,15,.45)}
+dialog#dPr form{display:flex;flex-direction:column;gap:10px;padding:18px 20px}
+dialog#dPr h2{margin:0;font-size:18px;color:var(--brand)}
+dialog#dPr .row{display:flex;gap:14px;align-items:center}
+dialog#dPr .row.end{justify-content:flex-end}
+dialog#dPr select{border:1px solid var(--line);border-radius:8px;padding:4px 8px;background:var(--bg)}
+dialog#dPr .n2{margin-left:auto;color:var(--sub);font-size:12.5px}
+dialog#dPr textarea{height:52vh;border:1px solid var(--line);border-radius:10px;padding:10px;font:12.5px/1.6 var(--mono);background:var(--bg);resize:vertical}

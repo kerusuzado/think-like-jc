@@ -118,7 +118,7 @@
         return '<div class="dec-row"><div class="dec-q">' + T(c[0], ctx) + '</div><div class="dec-a a' + (i % 4 + 1) + '">' + T(c[1] || "", ctx) + '</div><div class="dec-note">' + T(c[2] || "", ctx) + "</div></div>"; }).join("") +
         "</div>" + (f(p, "收束") ? '<div class="dec-tip">' + T(f(p, "收束"), ctx) + "</div>" : ""); } },
     "例题": { scenes: "新授课 专题课", keys: ["标题", "题号", "标签", "提示", "题干", "步骤", "图", "图注", "侧栏", "变式", "出处", "做笔记", "页底", "宽图"], render: function (p, ctx) { return question(p, ctx, { no: "例", tag: "例题" }); } },
-    "练习": { scenes: "新授课", keys: ["标题", "题号", "标签", "提示", "题干", "步骤", "图", "图注", "侧栏", "计时", "出处", "做笔记", "提示条", "宽图"], render: function (p, ctx) { return question(p, ctx, { timed: true, no: "练习", tag: "练习" }); } },
+    "练习": { scenes: "新授课", keys: ["标题", "题号", "标签", "提示", "题干", "步骤", "图", "图注", "侧栏", "计时", "出处", "做笔记", "提示条", "宽图", "变式"], render: function (p, ctx) { return question(p, ctx, { timed: true, no: "练习", tag: "练习" }); } },
     "推导": { scenes: "新授课 专题课 微论坛", keys: ["标题", "题号", "题干", "推导标题", "依据", "推导", "结论", "技巧", "高度"], render: function (p, ctx) {
       var rows = DV.rowsOf(items(p, "推导")); if (rows.length < 2) ctx.err(lineOf(p, "推导"), "推导至少写两行式子", "每行「- 式子 | 这一步做了什么」");
       var id = "dv" + ctx.pid.replace(/\W/g, ""), D = DV.build(T(f(p, "推导标题") || "推导", ctx), f(p, "依据") ? "依据：" + T(f(p, "依据"), ctx) : "", rows);
