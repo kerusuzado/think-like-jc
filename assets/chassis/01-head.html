@@ -66,14 +66,14 @@ body{
 
 /* ── 每页的绿色通栏 header（版式圣经：高≈页高 12%） ─────────── */
 .page-head{
-  height:84px;background:var(--brand-deep);
+  height:56px;background:var(--brand-deep);
   display:flex;align-items:center;gap:16px;padding:0 34px;position:relative;
 }
-.page-head .emblem{width:52px;height:52px;border-radius:50%;background:#fff;
+.page-head .emblem{width:40px;height:40px;border-radius:50%;background:#fff;
   display:grid;place-items:center;box-shadow:0 0 0 2px rgba(var(--light-rgb),.55);flex:none}
-.page-head .emblem i{width:44px;height:44px;display:block;
+.page-head .emblem i{width:34px;height:34px;display:block;
   background:var(--emblem-img) center/contain no-repeat}
-.page-head .school{width:232px;height:27px;flex:none;
+.page-head .school{width:190px;height:22px;flex:none;
   background:var(--wordmark-img) left center/contain no-repeat;
   filter:drop-shadow(0 1px 3px rgba(0,0,0,.35))}
 .page-head .school.txt{width:auto;height:auto;background:none;filter:none;color:#fff;font-size:17px;
@@ -97,7 +97,7 @@ body{
   box-shadow:0 0 12px rgba(var(--bright-rgb),.7);transition:width .42s var(--ease)}
 
 /* ── 页正文 ─────────────────────────────────────────────── */
-.page-body{padding:22px 46px 30px;position:relative;min-height:636px}
+.page-body{padding:18px 74px 26px 46px;position:relative;min-height:664px}   /* 右边多留 28px：右下那列工具按钮不压内容 */
 .page-kicker{font-size:14px;letter-spacing:.22em;color:var(--brand);font-weight:700;margin-bottom:4px}
 .titlebar{display:flex;align-items:baseline;gap:16px;margin-bottom:8px}
 .titlebar .page-title{margin:0}
@@ -617,6 +617,7 @@ body{
 .ovl-i{position:absolute;transform:translate(-50%,-50%);white-space:nowrap;line-height:1.25;
   text-align:center}
 .ovl-i.L{transform:translate(0,-50%);text-align:left}
+.ovl-i.R{transform:translate(-100%,-50%);text-align:right}
 .ovl-i .katex{font-size:1.02em}
 .ovl-i .nv{font-family:"Times New Roman",serif;font-weight:700;font-variant-numeric:tabular-nums}
 .lab-side{display:flex;flex-direction:column;gap:10px}
@@ -893,7 +894,21 @@ input[type=range]::-webkit-slider-thumb:active{cursor:grabbing;transform:scale(1
   top:calc(50% - 360px * var(--stage-scale,1));
   transform-origin:0 0;transform:scale(var(--stage-scale,1));
   z-index:6;pointer-events:none}
-.ink-cv.on{pointer-events:auto;cursor:crosshair}
+.ink-cv.on{pointer-events:auto;cursor:crosshair;touch-action:none}
+/* 放大镜：方形放大窗常驻，拖中间移动、拖边角调大小（2026-09-28 老师建议） */
+.inkbar.lensbar{bottom:136px}
+.lens-tgl svg{width:20px;height:20px}
+.lens{position:fixed;z-index:43;display:none;border-radius:10px;overflow:hidden;background:var(--paper);touch-action:none;
+  box-shadow:0 0 0 3px var(--brand),0 16px 44px rgba(0,0,0,.38)}
+.lens.show{display:block}
+.lens-view{position:absolute;inset:0;overflow:hidden;pointer-events:none}
+.lens-view *{pointer-events:none!important;animation-duration:.001ms!important;animation-delay:0s!important;transition:none!important}
+.lens-view > .page{left:0!important;top:0!important;transition:none!important;animation:none!important;box-shadow:none!important;opacity:1!important;visibility:visible!important}
+.lens-z,.lens-x{position:absolute;top:6px;z-index:2;height:26px;min-width:26px;padding:0 8px;border-radius:999px;cursor:pointer;font-family:inherit;font-weight:700;font-size:13px;line-height:26px;
+  color:#fff;background:rgba(var(--deep-rgb),.82);border:0;box-shadow:0 2px 8px rgba(0,0,0,.25)}
+.lens-z{right:40px}.lens-x{right:8px;padding:0;font-size:17px}
+.lens-grip{position:absolute;right:3px;bottom:3px;width:16px;height:16px;pointer-events:none;z-index:2;
+  background:linear-gradient(135deg,transparent 45%,var(--brand) 45% 55%,transparent 55% 68%,var(--brand) 68% 78%,transparent 78%)}
 /* 笔迹条落在导航条【正上方】：页面左下角是推导器的上一步/下一步，放左边会打架 */
 .inkbar{position:fixed;right:26px;bottom:82px;z-index:42;
   display:flex;flex-direction:row-reverse;align-items:center;gap:10px}
@@ -947,6 +962,25 @@ input[type=range]::-webkit-slider-thumb:active{cursor:grabbing;transform:scale(1
 .lbx-fit{position:relative;overflow:hidden}
 .lbx-fit>*{position:absolute;left:0;top:0;transform-origin:0 0}
 .lbx-fit .zoom-btn,.lbx-ph{display:none}
+/* ══ 大字档（2026-09-28 老师建议）：内容区整体放大 1.25／1.5 倍，按窄一号的宽度重新排版，超出一页的上下滑 ══ */
+body.fz-1 .page:not(.cover-page) .page-body{zoom:1.25;width:1024px;min-height:531px}
+body.fz-2 .page:not(.cover-page) .page-body{zoom:1.5;width:853px;min-height:443px}
+/* 大字档下左右两栏改成上下排，整页往下滑着看（固定宽的一栏不再把另一栏挤成窄条） */
+body.fz-1 .page:not(.cover-page) .q,body.fz-2 .page:not(.cover-page) .q{grid-template-columns:minmax(0,1fr)!important;height:auto!important}
+body.fz-1 .page:not(.cover-page) .q-main,body.fz-2 .page:not(.cover-page) .q-main,
+body.fz-1 .page:not(.cover-page) .q-side,body.fz-2 .page:not(.cover-page) .q-side{height:auto!important}
+.fz-tgl{font-weight:800;font-size:15px;font-family:inherit;color:var(--brand-deep);letter-spacing:-.02em}
+.fz-tgl small{font-size:11px;margin-left:1px}
+.fz-tgl.on{background:rgba(255,255,255,.72);box-shadow:0 6px 20px rgba(var(--deep-rgb),.28),inset 0 0 0 2px var(--brand)}
+/* ══ 点选放大：按下后点哪一块，哪一块铺满全屏 ══ */
+.pick-tgl svg{width:20px;height:20px}
+body.picking .page.is-active .page-body *{cursor:zoom-in!important}
+.pick-hl{position:fixed;z-index:44;pointer-events:none;border-radius:10px;display:none;
+  box-shadow:0 0 0 3px var(--brand),0 0 0 9999px rgba(10,20,14,.18);transition:all .12s ease}
+.pick-tip{position:fixed;left:50%;top:14px;transform:translateX(-50%);z-index:45;display:none;
+  background:var(--brand-deep);color:#fff;font-size:14px;padding:6px 16px;border-radius:999px;box-shadow:0 6px 20px rgba(0,0,0,.25)}
+body.picking .pick-tip{display:block}
+.inkbar.fzbar{bottom:190px}.inkbar.pickbar{bottom:244px}
 /* 页眉课题给右上角的全屏钮、铃铛让位 */
 .page-head .topic{padding-right:104px}
 </style>

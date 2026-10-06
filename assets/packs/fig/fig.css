@@ -1,0 +1,47 @@
+/* 图形库 FG：图框、halo / reveal 开关、表格图、原文图、原图框 */
+.fg-fig{padding:6px 10px}
+.fg-fig .figwrap,.q.solving .fg-fig .figwrap{width:100%;overflow:visible;position:relative}
+.fg-fig .figwrap > svg{width:100%;height:auto;display:block}
+.fg-fig g.hl{position:static;background:none;outline:none;opacity:0;transition:opacity .35s var(--ease)}
+.fg-fig g.hl.on{opacity:1}
+.fg-fig .ovl-i.hl{background:none;outline:none;border-radius:0;opacity:0;transition:opacity .35s var(--ease)}
+.fg-fig .ovl-i.hl.on{opacity:1}
+.fg-fig .figwrap.danger .ovl-i.hl.on{background:none;outline:none}
+.fg-fig .figwrap.danger g.hl.on{background:none;outline:none}
+.fg-fig figcaption{margin-top:4px;font-size:13.5px;color:var(--sub);text-align:center}
+.ovl-i.fg-lbl .katex{background:rgba(255,255,255,.9);padding:0 4px;border-radius:4px;font-size:1.05em;color:var(--brand-deep);font-weight:700}
+.ovl-i.fg-sm .katex{font-size:.92em;font-weight:500}
+/* 表格图 */
+table.fg-tb{width:100%;border-collapse:separate;border-spacing:0;background:#fff;border:1px solid var(--line);border-radius:12px;overflow:hidden;font-size:15.5px;line-height:1.5}
+table.fg-tb th{background:var(--brand-soft);color:var(--brand-deep);font-weight:700;padding:6px 10px;border-bottom:1px solid var(--line);text-align:center}
+table.fg-tb td{padding:6px 10px;border-bottom:1px solid #eef0ec;text-align:center}
+table.fg-tb tr:last-child td{border-bottom:none}
+table.fg-tb td.hl,table.fg-tb th.hl{position:static;outline:none;background:transparent;opacity:1;transition:background .3s var(--ease)}
+table.fg-tb td.hl.on,table.fg-tb th.hl.on{background:rgba(250,204,21,.45)}
+table.fg-tb td.hl.rv{color:transparent;background:repeating-linear-gradient(135deg,#f3f5f1 0 6px,#fafbf8 6px 12px)}
+table.fg-tb td.hl.rv.on{color:var(--ink);background:#fff8e1}
+/* 原文图 */
+.fg-text{font-size:15.5px;line-height:1.75;color:var(--ink);text-align:left;background:#fffdf7;border:1px solid #eadfc4;border-radius:12px;padding:10px 14px}
+.fg-text h4{margin:0 0 4px;text-align:center;font-size:16px;color:var(--brand-deep)}
+.fg-text p{margin:0 0 6px;text-indent:2em}
+/* 原图叠框：框的位置按图片百分比 */
+.fg-img{position:relative;display:block;width:100%}
+.fg-img > img{width:100%;height:auto;display:block;border-radius:8px}
+/* ── 实验页（studio「实验」页型）：左图右控件；滑条 → 图和读数 0ms 跟手 ── */
+.lab-wg{display:flex;flex-direction:column;gap:10px;margin-right:60px}
+.lab-wg .guess{background:#fdf6e3;border:1px solid #ecdcb0;border-left:5px solid var(--amber);border-radius:12px;padding:8px 16px;font-size:17px;color:#6b4e12}
+.lab-wg .guess b{color:#8a6414}
+.lab-wg .wg{display:grid;grid-template-columns:minmax(0,1fr) 330px;grid-template-rows:auto auto 1fr;gap:10px 18px;background:#fff;border:1px solid var(--line);border-radius:14px;padding:14px 18px;box-shadow:0 2px 12px rgba(var(--deep-rgb),.05)}
+.lab-wg .wg-fig{grid-column:1;grid-row:1 / span 3;position:relative;align-self:center;justify-self:center;width:100%}
+.lab-wg .wg-fig svg{width:100%;height:auto;display:block;max-height:410px}
+.lab-wg .wg-title{grid-column:2;font-size:17px;font-weight:800;color:var(--brand-deep)}
+.lab-wg .wg-ctl{grid-column:2;display:flex;flex-direction:column;gap:14px;font-size:17px}
+.lab-wg .wg-ctl label{display:grid;grid-template-columns:auto 1fr 64px;align-items:center;gap:10px}
+.lab-wg .wg-ctl input[type=range]{width:100%;accent-color:var(--brand)}
+.lab-wg .wg-ctl b{color:var(--rose);font-variant-numeric:tabular-nums;text-align:right;font-size:19px}
+.lab-wg .wg-read{grid-column:2;align-self:start;font-size:18px;line-height:1.7;color:#2b3230;background:var(--brand-soft);border-radius:10px;padding:10px 14px}
+.lab-wg .lab-cap{font-size:14.5px;color:var(--sub);text-align:center}
+.fg-leg{display:inline-flex;align-items:center;gap:5px;margin-right:12px;font-weight:600;color:var(--ink)}.fg-leg i{display:inline-block;width:16px;height:3px;border-radius:2px}
+table.fg-tb th{white-space:nowrap}
+.q[style*='520px'] table.fg-tb{font-size:14.5px}
+.q-fig[data-title="表"] .figwrap{padding-top:30px}

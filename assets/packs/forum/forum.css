@@ -1,0 +1,135 @@
+/* ══ 微论坛包（--pack forum）══════════════════════════════════════════
+   来源：2026-09「微论坛 · 实际问题与二次函数 · 反比例函数起始课」验收版（39 页）。
+   页型：课标原文 .mf-kb · 考情统计 .mf-stat · 教辅核对 .mf-er · 知识点×难点 .mf-kp · 关键点图解 .mf-key/.keyfig/.kf/.keyline
+         · 教学建议 .mf-advice + 文献 .mf-refs · 精选题 .q.mf-q · 学习层级 .mf-lv · 结尾页 .mf-end · 滑条演示 .wg
+   ═════════════════════════════════════════════════════════════════════ */
+.mf-pill{display:inline-block;background:#d7ead2;color:#1d4a2a;border-radius:999px;padding:0 10px;font-weight:700}
+.mf-cite{font-size:14px;line-height:1.7;color:#4A5058;margin-top:10px;border-top:1px solid var(--line);padding-top:8px}
+.mf-kb{display:grid;grid-template-columns:1fr 1fr;gap:16px;align-items:start}
+.mf-scan{margin:0;background:#fff;border:1px solid var(--line);border-radius:12px;padding:8px 10px;
+  display:flex;flex-direction:column;align-items:center;box-shadow:0 2px 8px rgba(var(--deep-rgb),.05)}
+.mf-scan figcaption{align-self:flex-start;font-size:14px;font-weight:800;color:var(--brand-deep);margin-bottom:4px}
+.mf-scan img{display:block;width:auto;max-width:100%;max-height:392px}
+.mf-kb > .mf-scan:first-child img:first-of-type{max-height:286px}
+.mf-kb > .mf-scan:first-child img:last-of-type{max-height:100px;margin-top:-2px}
+.mf-stat{width:100%;border-collapse:collapse;background:#fff}
+.mf-stat th{background:var(--brand);color:#fff;padding:5px 6px;font-weight:700;border:1px solid #0d6b3b;font-size:15px}
+.mf-stat th.sub{background:#1c8a52;font-size:13.5px}
+.mf-stat td{border:1px solid var(--line);padding:4px 6px;font-size:13px;line-height:1.45;vertical-align:middle}
+.mf-stat td.yr{font-weight:800;color:var(--brand-deep);text-align:center;background:var(--brand-soft);font-size:14px}
+.mf-stat td.no,.mf-stat td.sc{text-align:center;white-space:nowrap}
+.mf-stat td.kd{min-width:150px}
+.mf-stat td.tot{color:var(--rose);font-weight:800;text-align:center;font-size:17px;white-space:nowrap}
+.mf-stat td.tot small{display:block;font-size:11px}
+.mf-stat .pending{color:#9AA0A6;font-size:12.5px}
+.mf-stat tr:nth-child(even) td:not(.yr){background:#FAFBF9}
+.mf-mm .mm-leaf{height:auto;min-height:38px;white-space:normal;line-height:1.42;padding:6px 12px;font-size:15px}
+.mf-mm .mm-br .nm{font-size:16px}
+.mm-wrap.sum.mf-mm{transform:none;height:420px}
+.mf-kp{width:100%;border-collapse:collapse;background:#fff;font-size:17px;margin-top:4px}
+.mf-kp th{background:var(--brand);color:#fff;font-weight:800;padding:9px 15px;border:1px solid #0d6b3b;font-size:17px}
+.mf-kp th.l{width:36%}
+.mf-kp td{border:1px solid var(--line);padding:8px 15px;vertical-align:middle;line-height:1.6}
+.mf-kp td.l{background:var(--brand-soft);font-weight:600;color:var(--brand-deep)}
+.mf-kp tr:nth-child(odd) td.r{background:#F6F9F5}
+.mf-key .keyfig{display:grid;gap:14px}
+.mf-key .keyfig.c2{grid-template-columns:1fr 1fr}
+.mf-key .keyfig.c3{grid-template-columns:1fr 1fr 1fr}
+.mf-key .kf{background:#fff;border:1px solid var(--line);border-radius:14px;padding:10px 14px;text-align:center;box-shadow:0 2px 8px rgba(var(--deep-rgb),.05)}
+.mf-key .kf svg{width:100%;height:auto;display:block}
+.mf-key .kf .katex svg{height:inherit!important;width:100%!important;display:block!important;max-height:none!important}
+.mf-key .kf .h{font-weight:800;color:var(--brand-deep);font-size:16px;margin-bottom:4px}
+.mf-key .kf .h .katex{font-size:1.15em}
+.mf-key .kf .t{font-size:16px;line-height:1.7;color:#3F454D;text-align:left;margin-top:6px}
+.mf-key .kf .t b{color:var(--rose)}
+.mf-key .keyline{margin-top:12px;font-size:16px;line-height:1.8;background:var(--brand-soft);border-left:5px solid var(--brand);border-radius:10px;padding:8px 16px;padding-right:196px}
+.mf-key .keyline b{color:var(--rose)}
+.mf-key .kcap{font-size:20px;color:var(--rose);margin-top:2px}
+.mf-key .kp4{width:100%;border-collapse:collapse;font-size:14.5px;background:#fff;margin-top:6px}
+.mf-key .kp4 th{background:var(--brand);color:#fff;padding:6px 8px;border:1px solid #0d6b3b;font-weight:700}
+.mf-key .kp4 td{border:1px solid var(--line);padding:4px 8px;text-align:center}
+.mf-key .kp4 td.ok{color:var(--brand);font-weight:700}
+.mf-key .kp4 td.no{color:var(--rose);font-weight:700}
+.mf-key .kp4 b{color:var(--rose)}
+.mf-key .keyfig.c3 .kf svg{max-height:320px}
+.mf-key .keyfig.c2 .kf svg{max-height:262px}
+.mf-key .keyfig.c3.small .kf svg{max-height:150px}
+.mf-key .keyfig.c3.small .kf{padding:8px 12px}
+.mf-key .keyfig.c2 .kf.tun svg{max-height:200px}
+.mf-key .keyfig.c2.big .kf svg{max-height:440px}
+.mf-advice{counter-reset:ad;margin:2px 0 0;padding:0;list-style:none}
+.mf-advice li{counter-increment:ad;position:relative;padding:5px 0 5px 36px;font-size:18px;line-height:1.85}
+.mf-advice li::before{content:counter(ad);position:absolute;left:2px;top:10px;width:24px;height:24px;border-radius:50%;
+  background:var(--brand);color:#fff;font-size:13px;font-weight:700;display:grid;place-items:center}
+.mf-refs{margin-top:12px;border-top:1px solid var(--line);padding-top:10px}
+.mf-refs .r{font-size:14px;line-height:1.62;color:#3F454D;margin-bottom:4px}
+.mf-refs .r .why{color:var(--sub);font-size:13px}
+.mf-opts{display:flex;flex-wrap:wrap;gap:2px 30px;margin-top:4px}
+.mf-q .sol-steps li .mf-an{display:inline-block;background:var(--brand-soft);color:var(--brand-deep);border-radius:6px;padding:0 8px;margin-right:8px;font-size:.9em}
+.mf-q .sol-steps li .mf-err{margin-right:8px}
+.mf-q .kp-inline b{color:var(--brand-deep)}
+.mf-q .q-head .src-tag{font-size:13px}
+.mf-q .q-text{font-size:21px;line-height:1.8}
+.mf-q.solving .q-text{font-size:16px;line-height:1.66}
+.mf-q .q-fig img{max-height:250px;width:auto;max-width:100%;margin:0 auto}
+.mf-q .figwrap{width:100%}
+.mf-q .q-aside{font-size:14.5px;line-height:1.62}
+.mf-haswg .mf-wg{display:none}
+.mf-haswg.solving .mf-wg{display:block}
+.mf-haswg.solving .mf-fig{display:none}
+.mf-q.solving .q-fig img{max-height:170px}
+.mf-wg{background:#fff;border:1px solid var(--line);border-radius:12px;padding:6px 10px}
+.mf-wg .wg-title{font-size:13.5px;font-weight:800;color:var(--brand-deep)}
+.mf-wg .wg-ctl{display:flex;flex-wrap:wrap;gap:2px 12px;margin:3px 0;font-size:13.5px}
+.mf-wg .wg-ctl label{display:flex;align-items:center;gap:6px}
+.mf-wg .wg-ctl input[type=range]{width:130px;accent-color:var(--brand)}
+.mf-wg .wg-ctl b{min-width:48px;color:var(--rose);font-variant-numeric:tabular-nums}
+.mf-wg .wg-fig svg{width:100%;height:auto;display:block;max-height:220px}
+.mf-wg .wg-fig .katex svg{height:inherit!important;max-height:none!important;width:100%!important;display:block!important}
+.mf-wg .wg-2{display:flex;gap:6px}
+.mf-wg .wg-2 svg{flex:1;min-width:0}
+.mf-wg .wg-read{font-size:12.8px;line-height:1.5;color:#3F454D;background:var(--brand-soft);border-radius:6px;padding:3px 8px}
+.mf-lv{width:100%;border-collapse:collapse;background:#fff;font-size:13.8px}
+.mf-lv th{background:var(--brand);color:#fff;padding:5px 10px;font-weight:800;border:1px solid #0d6b3b;font-size:15px;white-space:nowrap}
+.mf-lv td{border:1px solid var(--line);padding:3px 10px;line-height:1.42}
+.mf-lv td.n{text-align:center;font-weight:800;white-space:nowrap}
+.mf-lv tr.sec td{background:var(--brand-soft);color:var(--brand-deep);font-weight:800}
+.mf-end .mf-end-photo{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.mf-end .mf-end-veil{position:absolute;inset:0;background:linear-gradient(135deg,rgba(var(--deep-rgb),.86),rgba(var(--brand-rgb),.55))}
+.mf-end .cover-top{z-index:5}
+.mf-thanks{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:4;color:#fff}
+.mf-thanks .completion-check{width:84px;height:84px}
+.mf-thanks .completion-check circle,.mf-thanks .completion-check path{stroke:#fff}
+.mf-thanks .t{font-size:60px;letter-spacing:.35em;margin-top:16px;font-family:"Kaiti SC","STKaiti","KaiTi",serif;padding-left:.35em}
+.mf-thanks .s{margin-top:12px;font-size:19px;letter-spacing:.14em;color:rgba(255,255,255,.86)}
+.mf-nw{white-space:nowrap}
+.mf-q .mf-brief{display:none}
+.mf-q.solving .mf-full{display:none}
+.mf-q.solving .mf-brief{display:block;background:var(--brand-soft);border-radius:8px;padding:5px 12px}
+.mf-optimg{display:block;margin-top:8px}
+.mf-optimg img{display:block;max-width:100%;max-height:190px;border:1px solid var(--line);border-radius:8px;background:#fff}
+.mf-q.solving .mf-optimg img{max-height:96px}
+.mf-q.solving .mf-wg .wg-fig svg{max-height:190px}
+.mf-q.solving .q-aside{font-size:13.5px;line-height:1.55;padding:9px 14px}
+.mf-q.solving .q-side{gap:8px}
+.mf-q.solving .mf-wg .wg-fig svg{max-height:172px}
+.mf-q .mini-timer{margin-right:40px}
+.mf-er-note{font-size:14.5px;line-height:1.6;color:var(--brand-deep);background:var(--brand-soft);border-radius:10px;padding:6px 14px;margin:0 0 8px}
+.mf-er-lg{display:block;font-size:13px;color:var(--sub)}
+.mf-er-lg i{margin:0 4px 0 8px}
+.mf-er{width:100%;border-collapse:collapse;background:#fff;font-size:14px;line-height:1.5}
+.mf-er th{background:var(--brand);color:#fff;padding:5px 8px;font-size:14px;border:1px solid #0d6b3b;text-align:left}
+.mf-er td{border:1px solid var(--line);padding:4px 8px;vertical-align:middle}
+.mf-er td.c1{width:150px;white-space:nowrap}
+.mf-er td.c1 b{display:inline-block;min-width:52px;color:var(--brand-deep)}
+.mf-er td.c1 span{font-size:13px}
+.mf-er td.c2{width:54px;text-align:center}
+.mf-er td.c4{width:32%;color:#2d4a38}
+.mf-er tr:nth-child(even) td{background:#FAFBF9}
+.mf-er i,.mf-er-lg i{font-style:normal;font-size:12px;font-weight:700;border-radius:999px;padding:1px 8px;color:#fff;white-space:nowrap}
+.inkbar{pointer-events:none}
+.inkbar > .ink-tgl{pointer-events:auto}
+/* 课标文字摘录（没有截图时）：一条一块，左边品牌色竖条，像从原文里剪下来的 */
+.mf-excerpt{display:flex;flex-direction:column;gap:12px;margin:4px 60px 10px 0}
+.mf-excerpt p{margin:0;background:#fff;border:1px solid var(--line);border-left:6px solid var(--brand);border-radius:12px;padding:14px 22px;font-size:21px;line-height:1.7;color:var(--ink);box-shadow:0 2px 12px rgba(var(--deep-rgb),.05)}
+.mf-excerpt p b{color:var(--brand-deep)}

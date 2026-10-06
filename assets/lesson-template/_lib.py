@@ -4,8 +4,21 @@ import io, os, re, sys
 HERE = os.path.dirname(os.path.abspath(__file__))
 os.environ.setdefault("LESSON_DIR", HERE)
 # brand.py 在 skill 的 assets/brand/ 里；课件目录里若有一份副本也认
-for _d in (HERE, os.path.join(HERE, "..", "brand"), os.path.expanduser("~/.claude/skills/think-like-jc/assets/brand")):
-    if os.path.exists(os.path.join(_d, "brand.py")) and _d not in sys.path: sys.path.insert(0, _d)
+def _skill_dirs():
+    yield HERE
+    if os.environ.get("TLJC_HOME"): yield os.path.join(os.environ["TLJC_HOME"], "assets", "brand")
+    d = HERE                                   # 课件放在 skill 仓库里面（如 demo/）时，往上找 assets/brand
+    for _ in range(6):
+        d = os.path.dirname(d); yield os.path.join(d, "assets", "brand")
+    yield os.path.expanduser("~/.claude/skills/think-like-jc/assets/brand")
+for _d in _skill_dirs():
+    if os.path.exists(os.path.join(_d, "brand.py")):
+        if _d not in sys.path: sys.path.insert(0, _d)
+        _rv = os.path.join(os.path.dirname(_d), "packs", "review")     # 讲评课：from review_lib import Review
+        if os.path.isdir(_rv) and _rv not in sys.path: sys.path.insert(0, _rv)
+        break
+else:
+    sys.exit("找不到 brand.py：把 skill 装到 ~/.claude/skills/think-like-jc/，或设环境变量 TLJC_HOME=skill 目录")
 from brand import BRAND, head_html, cover_html, motto_wm_html   # noqa
 
 TOPIC = "第 1 课时　课题名"                     # 页眉右侧的短标题（≤ 22 字）
@@ -54,12 +67,15 @@ def q(no, tier, kp, text, steps, aside, tm, extra_cls=" noimg", side_extra=""):
        aside = (侧栏标题, 侧栏正文)；tm = (分, 秒)，讲解页写 (0,0) 并在返回值上 .replace(timer(0,0), "") 去掉计时器。
        extra_cls：" noimg" 无图；"" 有图（side_extra 放 <figure class="q-fig">…）；" short"/" tight" 页底还压着别的条时用。"""
     def _li(s):
-        at = ""
-        m = re.match(r"^@([^@]*)@", s)
-        if m:
-            at += ' data-hl="%s"' % m.group(1); s = s[m.end():]
-        if s.startswith("!"):
-            at += ' data-danger="1"'; s = s[1:]
+        hl, danger = None, False
+        while True:                                # 前缀 `!` 与 `@键@` 顺序随意、可叠加
+            m = re.match(r"^@([^@]*)@", s)
+            if m: hl = m.group(1).strip(); s = s[m.end():]; continue
+            if s.startswith("!"): danger = True; s = s[1:]; continue
+            break
+        if "@" in s and re.search(r"@[\w\s]+@", s):
+            raise SystemExit("步骤里有没吃掉的 @键@（前缀只能写在步骤最前面）：" + s[:40])
+        at = (' data-hl="%s"' % hl if hl else "") + (' data-danger="1"' if danger else "")
         return '            <li%s>%s</li>' % (at, s)
     li = "\n".join(_li(s) for s in steps)
     return """    <div class="q%s">
@@ -82,8 +98,9 @@ def q(no, tier, kp, text, steps, aside, tm, extra_cls=" noimg", side_extra=""):
     </div>""" % (extra_cls, no, tier, kp, text, li, len(steps), side_extra,
                  aside[0], aside[1], timer(*tm))
 
-def write_pages(P, out=None):
+def write_pages(P, out=None, timers=1200):
+    """timers：全课计时器之和。新授 / 训练 / 复习 / 应用课 1200；练习讲评课 0（讲评课不设计时器）。"""
     out = out or os.path.join(HERE, "pages.html")
     io.open(out, "w", encoding="utf-8").write("\n".join(P) + "\n")
     tt = sum(int(a) * 60 + int(b) for a, b in re.findall(r'data-min="(\d+)" data-sec="(\d+)"', "\n".join(P)))
-    print("pages:", len(P), "timer total:", tt, "s" + ("" if tt == 1200 else "   ← 必须恰好 1200"))
+    print("pages:", len(P), "timer total:", tt, "s" + ("" if tt == timers else "   ← 必须恰好 %d" % timers))

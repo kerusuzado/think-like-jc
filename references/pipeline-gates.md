@@ -10,7 +10,14 @@
 └── 课.html             ← build 生成的单文件成品
 ```
 
-## 2. 三条命令
+## 2. 一条命令（推荐）
+```bash
+python3 <skill>/scripts/make.py 我的课          # 生成 → lint → 装配（自动识别要哪些包）→ 构建 → 自检 + 截图 → shots/CHECKLIST.md
+```
+任何一步失败就停，并告诉你卡在哪。退出码 0 = 闸门全绿；然后照 `shots/CHECKLIST.md` 逐张目验。
+下面是它内部分步做的事（排查时单独跑）：
+
+## 2b. 分步命令
 ```bash
 python3 lesson/gen.py                                              # pages.html + 计时合计
 python3 <skill>/scripts/assemble.py lesson src/课.src.html [--pack math]
@@ -20,12 +27,21 @@ node <skill>/scripts/build.mjs src/课.src.html 课.html [--assets 目录]
 第一次用：`cd <skill> && npm install katex`。
 
 ## 3. 闸门（全绿才许交）
+静态（`scripts/lint.py`，构建前）：章节三处一致、页 id 不重、`<li属性>` 粘连、`data-hl` 只在 `<li>`、行内 `\dfrac`、结论条漏 `reveal-after`、学生面前的制作过程词、SVG 里 √ 字符、JS 里 `<x-tex>`、`Math.random`、驱动注册到不存在的页、extra.css 死规则与改共用件、讲评课的 data-subs 键 / 学生姓名泄露 / data.json 被 git 跟踪 / 手敲人数、计时合计。
+动态（`scripts/audit.py --type new|review`）见下表；`svg_overlap / svg_clip / tex_wrap / chrome_warn` 是软提示，**每一条都要打开截图亲眼看**。
+
 | 闸门 | 内容 | 查法 |
 |---|---|---|
 | 断网可用 | 零外链、零运行时请求 | build.mjs 自动扫 |
 | 零溢出 | 每页 scrollHeight ≤ 721，**收起态和展开态都要** | audit.py `over` |
 | 推导满幅 | 每个推导器 `--fit` = 1.0000 | audit.py `fit` |
-| 计时总量 | 全部计时器之和 = 1200 | audit.py `tt` |
+| 计时总量 | 全部计时器之和 = 1200（讲评课 = 0） | audit.py `tt` |
+| 高亮键 | 步骤写的键本页都有 `.hl[data-k]` | audit.py `hl_orphan` |
+| 标题一行 | 页标题不折行 | audit.py `title2` |
+| 一页一个步进组件 | 不重复注册驱动 | audit.py `drivers2` |
+| 名单隐私 | 加载时名单全收起、页面文字无学生姓名 | audit.py `names` + lint |
+| 图内文字 | 不互压、不压线压点、不出框 | audit.py `svg_overlap` `svg_clip`（软） |
+| 公式不折行 | 行内公式不在 − < 处断开 | audit.py `tex_wrap`（软） |
 | 导图注册 | 每张 `.mm-wrap` 都在 `__debugDrivers[所在页]` | audit.py `mm` |
 | 高亮巡检 | 带图的题步进时真的亮 | audit.py `hl` |
 | 固定按钮不压内容 | 计时器/结论/卡片与右下导航、笔迹钮不相交（> 30px 才算） | audit.py `chrome` |

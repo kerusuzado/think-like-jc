@@ -187,7 +187,7 @@ document.addEventListener("click", function(e){
 function fitPage(p){
   var inner = $(".page-body", p); if (!inner) return;
   inner.style.transform = ""; inner.style.transformOrigin = "top center"; inner.style.height = "";
-  var need = inner.scrollHeight, avail = 720 - 84;
+  var need = inner.scrollHeight, avail = 720 - 56;
   if (need <= avail + 1) return;
   var k = Math.max(.62, avail/need);
   inner.style.transform = "scale("+k+")";
@@ -250,9 +250,14 @@ function fitPage(p){
   });
   cv.addEventListener("pointermove", function(e){
     if (!drawing) return;
-    cur.p.push(xy(e)); paintLast(cur);
+    // 手写笔、触屏一次事件里常攒着好几个点，全取出来，笔画才连得上
+    var evs = (e.getCoalescedEvents && e.getCoalescedEvents().length) ? e.getCoalescedEvents() : [e];
+    evs.forEach(function(ce){ cur.p.push(xy(ce)); paintLast(cur); });
   });
-  ["pointerup","pointercancel","pointerleave"].forEach(function(ev){
+  // 触屏上别让浏览器把划动当成翻页、滚动或缩放（笔画断断续续就是被它抢走了）
+  cv.addEventListener("touchstart", function(e){ if (on) e.preventDefault(); }, {passive:false});
+  cv.addEventListener("touchmove", function(e){ if (on) e.preventDefault(); }, {passive:false});
+  ["pointerup","pointercancel"].forEach(function(ev){
     cv.addEventListener(ev, function(){ drawing = false; });
   });
 
@@ -289,6 +294,94 @@ function fitPage(p){
     if (e.key === "Escape" && on) setOn(false);
   });
   markColor($$(".ink-c")[0]);    // 默认红笔
+  window.__inkOff = function(){ if (on) setOn(false); };
+})();
+
+/* ══ 放大镜（09-28 老师建议版）：点一下出现方形放大窗并常驻；拖窗口中间移动，拖四边四角调大小；
+   窗里是它正下方那块内容的放大（2 倍，右上角可切 1.5／2／2.5／3 倍），翻页、点步骤跟着更新。再点放大镜按钮或按 Esc 收起 ══ */
+(function lens(){
+  var tgl = $("#lensTgl"), L = $("#lens"); if (!tgl || !L) return;
+  var on = false, Z = 2, ZS = [1.5, 2, 2.5, 3], clone = null, box = null, timer = null, obs = null;
+  var view = document.createElement("div"); view.className = "lens-view"; L.appendChild(view);
+  var zb = document.createElement("button"); zb.type = "button"; zb.className = "lens-z"; L.appendChild(zb);
+  var xb = document.createElement("button"); xb.type = "button"; xb.className = "lens-x"; xb.textContent = "×"; xb.title = "收起放大镜"; L.appendChild(xb);
+  var grip = document.createElement("i"); grip.className = "lens-grip"; L.appendChild(grip);
+  function k(){ return parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--stage-scale")) || 1; }
+  function snap(){  // 把当前这一页（含已亮的步骤、已揭的卡片）照一份放进窗里
+    view.innerHTML = ""; clone = pages[idx].cloneNode(true);
+    clone.querySelectorAll("[id]").forEach(function(n){ n.removeAttribute("id"); });
+    view.appendChild(clone); place();
+    if (obs) obs.disconnect();
+    if (window.MutationObserver){
+      obs = new MutationObserver(function(){ clearTimeout(timer); timer = setTimeout(snap, 180); });
+      obs.observe(pages[idx], { subtree: true, attributes: true, childList: true, characterData: true });
+    }
+  }
+  function place(){
+    var W = innerWidth, H = innerHeight;
+    box.w = Math.max(160, Math.min(W - 8, box.w)); box.h = Math.max(110, Math.min(H - 8, box.h));
+    box.x = Math.max(4, Math.min(W - box.w - 4, box.x)); box.y = Math.max(4, Math.min(H - box.h - 4, box.y));
+    L.style.left = box.x + "px"; L.style.top = box.y + "px"; L.style.width = box.w + "px"; L.style.height = box.h + "px";
+    zb.textContent = Z + "×";
+    if (!clone) return;
+    var r = pages[idx].getBoundingClientRect(), cx = box.x + box.w / 2, cy = box.y + box.h / 2;
+    // 放大窗自己不能出屏，它正下方的那块内容就够不到页面最右／最下的边；把窗口位置线性映射到整页范围，拖到头就能看到页边（09-29 老师反馈）
+    function mapc(c, lo, hi, p0, plen, half){ var span = hi - lo, t = span > 0 ? (c - lo) / span : .5; return plen > 2 * half ? p0 + half + t * (plen - 2 * half) : p0 + plen / 2; }
+    var sx = mapc(cx, 4 + box.w / 2, innerWidth - 4 - box.w / 2, r.left, r.width, box.w / (2 * Z));
+    var sy = mapc(cy, 4 + box.h / 2, innerHeight - 4 - box.h / 2, r.top, r.height, box.h / (2 * Z));
+    clone.style.transform = "scale(" + (k() * Z) + ")";
+    clone.style.marginLeft = (box.w / 2 - (sx - r.left) * Z) + "px";
+    clone.style.marginTop = (box.h / 2 - (sy - r.top) * Z) + "px";
+  }
+  function setOn(v){
+    on = v; tgl.classList.toggle("on", on); L.classList.toggle("show", on);
+    if (on){
+      if (window.__inkOff) window.__inkOff();
+      if (!box){ var W = innerWidth, H = innerHeight; box = { w: Math.round(W * 0.46), h: Math.round(H * 0.34) }; box.x = Math.round((W - box.w) / 2); box.y = Math.round(H * 0.2); }
+      snap();
+    } else if (obs) obs.disconnect();
+    tgl.title = on ? "放大镜：开（再点一下收起）" : "放大镜（看小字）";
+  }
+  tgl.addEventListener("click", function(){ setOn(!on); });
+  xb.addEventListener("click", function(e){ e.stopPropagation(); setOn(false); });
+  zb.addEventListener("click", function(e){ e.stopPropagation(); Z = ZS[(ZS.indexOf(Z) + 1) % ZS.length]; place(); });
+  // 拖动：边缘 14px 内调大小（哪条边就动哪条边），中间移动
+  var drag = null, EDGE = 14;
+  function edgeOf(e){
+    var r = L.getBoundingClientRect(), x = e.clientX - r.left, y = e.clientY - r.top, t = e.pointerType === "touch" ? 26 : EDGE;
+    return { l: x < t, r: x > r.width - t, t: y < t, b: y > r.height - t };
+  }
+  function cursorOf(ed){
+    if ((ed.l && ed.t) || (ed.r && ed.b)) return "nwse-resize";
+    if ((ed.r && ed.t) || (ed.l && ed.b)) return "nesw-resize";
+    if (ed.l || ed.r) return "ew-resize";
+    if (ed.t || ed.b) return "ns-resize";
+    return "move";
+  }
+  L.addEventListener("pointermove", function(e){
+    if (!drag){ L.style.cursor = cursorOf(edgeOf(e)); return; }
+    var dx = e.clientX - drag.x0, dy = e.clientY - drag.y0, b0 = drag.b, ed = drag.ed;
+    if (!(ed.l || ed.r || ed.t || ed.b)){ box.x = b0.x + dx; box.y = b0.y + dy; }
+    else {
+      if (ed.r) box.w = b0.w + dx;
+      if (ed.b) box.h = b0.h + dy;
+      if (ed.l){ box.w = b0.w - dx; box.x = b0.x + (b0.w - Math.max(160, box.w)); }
+      if (ed.t){ box.h = b0.h - dy; box.y = b0.y + (b0.h - Math.max(110, box.h)); }
+    }
+    place();
+  });
+  L.addEventListener("pointerdown", function(e){
+    if (e.target === zb || e.target === xb) return;
+    e.preventDefault();
+    drag = { x0: e.clientX, y0: e.clientY, b: { x: box.x, y: box.y, w: box.w, h: box.h }, ed: edgeOf(e) };
+    try { L.setPointerCapture(e.pointerId); } catch(err){}
+  });
+  ["pointerup","pointercancel"].forEach(function(ev){ L.addEventListener(ev, function(){ drag = null; }); });
+  L.addEventListener("touchmove", function(e){ e.preventDefault(); }, {passive:false});
+  window.addEventListener("resize", function(){ if (on) place(); });
+  $("#inkTgl") && $("#inkTgl").addEventListener("click", function(){ if (on) setOn(false); });
+  labs.push(function(){ if (on) setTimeout(snap, 30); });     // 翻页后窗里跟着换
+  document.addEventListener("keydown", function(e){ if (e.key === "Escape" && on) setOn(false); });
 })();
 
 /* 总结页的「揭晓答案」：学生先自己复述，说完了再一次性亮出来 */
@@ -344,7 +437,7 @@ function fitPage(p){
    默认克隆（图、表、静态 SVG）；data-zoom="live" 则把元素本身搬进灯箱（实验台保持可拖），关掉再搬回。
    灯箱开着时所有按键先被它吃掉，翻页/步进不会误触发。 */
 (function(){
-  var targets = $$("[data-zoom]"); if (!targets.length) return;
+  var targets = $$("[data-zoom]");
   var lbx = document.createElement("div"); lbx.className = "lbx";
   lbx.innerHTML = '<div class="lbx-panel"><div class="lbx-head"><b></b><span class="hint">Esc 或 ✕ 退出</span>' +
     '<button class="lbx-x" aria-label="关闭">✕</button></div><div class="lbx-body"></div></div>';
@@ -392,6 +485,70 @@ function fitPage(p){
     e.stopImmediatePropagation(); e.preventDefault();
   }, true);
   labs.push(function(){ if (lbx.classList.contains("on")) close(); });   // 翻页/重绘时顺手关掉
+  window.__lbxOpen = open;
+})();
+
+/* ══ 大字档：A+ 点一次大一档（1.25 → 1.5 → 复原），记在本机 ══ */
+(function(){
+  var b = $("#fzTgl"); if (!b) return;
+  var lv = 0; try { lv = +localStorage.getItem("jp-fz") || 0; } catch (e) {}
+  function apply(){
+    document.body.classList.remove("fz-1", "fz-2");
+    if (lv) document.body.classList.add("fz-" + lv);
+    b.classList.toggle("on", !!lv);
+    b.innerHTML = "<span>A<small>" + (lv === 2 ? "++" : "+") + "</small></span>";
+    b.title = lv ? "大字第 " + lv + " 档（再点" + (lv === 2 ? "复原" : "更大") + "）" : "大字（点一次大一档，第三次复原）";
+    try { localStorage.setItem("jp-fz", String(lv)); } catch (e) {}
+    labs.forEach(function(f){ try { f(); } catch (e) {} });
+  }
+  b.addEventListener("click", function(){ lv = (lv + 1) % 3; apply(); });
+  apply();
+})();
+
+/* ══ 点选放大：按下后点哪一块（题卡、材料、步骤、图表），哪一块进整屏灯箱 ══ */
+(function(){
+  var b = $("#pickTgl"), hl = $("#pickHl"); if (!b || !hl || !window.__lbxOpen) return;
+  var on = false;
+  function set(v){ on = v; document.body.classList.toggle("picking", v); b.classList.toggle("on", v); if (!v) hl.style.display = "none"; }
+  function looksBlock(el){
+    var cs = getComputedStyle(el);
+    if (cs.display === "inline") return false;
+    var bg = cs.backgroundColor, bd = parseFloat(cs.borderTopWidth) + parseFloat(cs.borderLeftWidth);
+    return (bg && bg !== "rgba(0, 0, 0, 0)" && bg !== "transparent") || bd > 0 || cs.boxShadow !== "none" ||
+      /^(TABLE|FIGURE|IMG|SVG|svg|CANVAS|UL|OL|P|BLOCKQUOTE|PRE)$/.test(el.tagName);
+  }
+  function pick(t){
+    var body = t.closest && t.closest(".page.is-active .page-body"); if (!body) return null;
+    var BR = body.getBoundingClientRect(), area = BR.width * BR.height;
+    for (var el = t; el && el !== body; el = el.parentElement){
+      var r = el.getBoundingClientRect();
+      if (r.width < 140 || r.height < 40) continue;
+      if (r.width * r.height > area * .82) break;
+      if (el.classList.contains("motto-wm") || el.classList.contains("titlebar")) continue;
+      if (looksBlock(el)) return el;
+    }
+    return null;
+  }
+  b.addEventListener("click", function(e){ e.stopPropagation(); set(!on); });
+  document.addEventListener("mousemove", function(e){
+    if (!on) return;
+    var el = pick(e.target);
+    if (!el){ hl.style.display = "none"; return; }
+    var r = el.getBoundingClientRect();
+    hl.style.display = "block"; hl.style.left = (r.left - 4) + "px"; hl.style.top = (r.top - 4) + "px";
+    hl.style.width = (r.width + 8) + "px"; hl.style.height = (r.height + 8) + "px";
+  });
+  document.addEventListener("click", function(e){
+    if (!on || e.target === b || b.contains(e.target)) return;
+    if (e.target.closest(".lbx,.chrome,.inkbar,.chapters,.fs-tgl,.sound-tgl")) return;
+    var el = pick(e.target); if (!el) return;
+    e.preventDefault(); e.stopPropagation();
+    var t = el.closest(".page").querySelector(".page-title");
+    el.dataset.title = el.dataset.title || (t ? t.textContent.trim() : "放大");
+    window.__lbxOpen(el);
+    set(false);
+  }, true);
+  document.addEventListener("keydown", function(e){ if (on && e.key === "Escape") set(false); });
 })();
 
 showPage(0, 1);

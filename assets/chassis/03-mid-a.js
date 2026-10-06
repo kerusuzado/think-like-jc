@@ -31,6 +31,25 @@
   </div>
 </div>
 
+<div class="inkbar lensbar">
+  <button class="ink-tgl lens-tgl glassy" id="lensTgl" title="放大镜（看小字）" aria-label="放大镜">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="10.5" cy="10.5" r="6.5"/><path d="M15.5 15.5 21 21"/><path d="M10.5 7.8v5.4M7.8 10.5h5.4"/></svg>
+  </button>
+</div>
+<div class="lens" id="lens"></div>
+<div class="inkbar fzbar">
+  <button class="ink-tgl fz-tgl glassy" id="fzTgl" title="大字（点一次大一档，第三次复原）" aria-label="大字"><span>A<small>+</small></span></button>
+</div>
+<div class="inkbar pickbar">
+  <button class="ink-tgl pick-tgl glassy" id="pickTgl" title="点选放大：按下后点哪一块，哪一块铺满全屏" aria-label="点选放大">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M4 9V4h5"/><path d="M20 9V4h-5"/><path d="M4 15v5h5"/><path d="M20 15v5h-5"/><rect x="8.5" y="8.5" width="7" height="7" rx="1.2"/></svg>
+  </button>
+</div>
+<div class="pick-hl" id="pickHl"></div>
+<div class="pick-tip">点一块内容放大　再点按钮或按 Esc 退出</div>
+
 <div class="chapters" id="chapters"></div>
 <div class="chrome">
   <button class="nav-btn glassy" id="prevBtn" aria-label="上一步">◀</button>
