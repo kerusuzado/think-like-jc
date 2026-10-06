@@ -117,7 +117,7 @@
       if (/不等比|拉伸/.test(head)) S.equal = false;
       var hx = head.match(/横轴\s*(\S+)/), hy = head.match(/纵轴\s*(\S+)/); if (hx) S.xl = hx[1]; if (hy) S.yl = hy[1];
       items.forEach(function (it) {
-        var o = opts(it.text), t = o.rest, it2 = { key: o.key, reveal: o.reveal, color: o.color, dash: o.dash, hollow: o.hollow };
+        var o = opts(it.text), t = o.rest, it2 = { key: o.key, reveal: o.reveal, color: o.color, dash: o.dash, hollow: o.hollow, ln: it.line };
         if ((m = t.match(/^(?:曲线|函数|直线)\s*(.+)$/))) {
           var fr = m[1].match(/从\s*(.+?)\s*到\s*(.+?)\s*(?:名|不标|无标签|$)/); var ex = m[1].replace(/从.*$/, "").replace(/名\s*.*$/, "").replace(/不标|无标签/, "").trim();
           var r = expr(ex, ctx.vars); if (r.err) return E(it.line, r.err, r.fix || (/自变量用 x（现在左边/.test(r.err) ? "例：曲线 y=0.01x（横轴、纵轴的物理量名写在「图:」第一行）" : "写成 y=x^2-2x-3 这样（乘号可以省略，分数写 \\frac{a}{b}）"));
@@ -156,6 +156,10 @@
         }
         else return E(it.line, (S.geo ? "几何图" : "函数图") + "里看不懂这一项：" + t, S.geo ? "可用：点 A(0,0) ｜ 线段 A-B ｜ 多边形 A-B-C ｜ 圆 O 半径 5 ｜ 圆 O 过 A ｜ 扇形 O 半径 3 从 0 到 120 ｜ 角 A-B-C 标 α ｜ 直角 A-B-C ｜ 标注 (2,3) 文字" : "可用：曲线 y=… ｜ 点 A(1,-4) ｜ 竖线 x=1 ｜ 横线 y=0 ｜ 线段 (0,0)-(2,4) 或 线段 A-B ｜ 多边形 O-A-P-B 标 S=6 ｜ 带 1..3 ｜ 标注 (2,3) 文字");
         S.items.push(it2);
+      });
+      if (!S.auto && !(ctx.vars && ctx.vars.length)) S.items.forEach(function (q) {    // 点在图框外面：画出来就是被裁掉的半个点
+        if (q.kind === "point" && typeof q.x === "number" && (q.x < S.xr[0] || q.x > S.xr[1] || q.y < S.yr[0] || q.y > S.yr[1]))
+          E(q.ln, "点 " + (q.name || "") + "(" + q.x + "," + q.y + ") 在图的范围外（x " + S.xr[0] + ".." + S.xr[1] + "，y " + S.yr[0] + ".." + S.yr[1] + "），画不出来", "把第一行的范围放大到能装下这个点，或换一个范围内的示意点");
       });
       if (S.auto) {
         var bx = [], by = [];
