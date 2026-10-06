@@ -85,24 +85,66 @@
       if (bad) return ctx.err(line.line, "验算里「当 …：」的赋值看不懂：" + line.text, "写成「当 k=-12, x=-1：k/x = 12」，字母用英文，值写数字或算式");
       t = m[2];
     }
-    var op = t.match(/^(.+?)\s*(=|≈|>=|<=|≥|≤|>|<|≠)\s*([^=<>≥≤≈≠]+)$/);
-    if (!op) return ctx.err(line.line, "验算要写成「算式 = 结果」或「a > b」：" + line.text, "例：-12/(-3) = 4；当 x=2：-6/x = -3；-1/2 > -1");
-    var L = calc(op[1], env), R = calc(op[3], env);
-    if (L !== L || R !== R || !isFinite(L) || !isFinite(R)) return ctx.err(line.line, "验算这一行算不出来：" + line.text, "只能用数字、已赋值的字母、+ - * / ^ ( )、sqrt()、abs()、pi；分数写 a/b");
-    var dec = (op[3].trim().match(/^-?\d+\.(\d+)$/) || [, ""])[1].length, e = dec ? .5 * Math.pow(10, -dec) + 1e-9 : 1e-6 * Math.max(1, Math.abs(L), Math.abs(R)), ok = { "=": Math.abs(L - R) <= e, "≈": Math.abs(L - R) <= .01 * Math.max(1, Math.abs(R)), ">": L > R + e, "<": L < R - e, ">=": L >= R - e, "≥": L >= R - e, "<=": L <= R + e, "≤": L <= R + e, "≠": Math.abs(L - R) > e }[op[2]];
-    if (!ok) ctx.err(line.line, "验算不成立：" + line.text + "（左边算出来是 " + (Math.round(L * 1e6) / 1e6) + "，右边是 " + (Math.round(R * 1e6) / 1e6) + "）", "重新算这道题；如果答案错了，题干的答案、步骤、图都要一起改");
+    var parts = t.split(/\s*(>=|<=|≥|≤|≈|≠|=|>|<)\s*/);   // 支持连写：-3 < -2 < 0
+    if (parts.length < 3 || parts.length % 2 === 0 || parts.some(function (x) { return !x.trim(); })) return ctx.err(line.line, "验算要写成「算式 = 结果」或「a > b」：" + line.text, "例：-12/(-3) = 4；当 x=2：-6/x = -3；-1/2 > -1");
+    for (var i = 0; i + 2 < parts.length; i += 2) {
+      var L = calc(parts[i], env), R = calc(parts[i + 2], env), o2 = parts[i + 1];
+      if (L !== L || R !== R || !isFinite(L) || !isFinite(R)) return ctx.err(line.line, "验算这一行算不出来：" + line.text, "只能用数字、已赋值的字母、+ - * / ^ ( )、sqrt()、abs()、pi；分数写 a/b");
+      var dec = (parts[i + 2].trim().match(/^-?\d+\.(\d+)$/) || [, ""])[1].length, e = dec ? .5 * Math.pow(10, -dec) + 1e-9 : 1e-6 * Math.max(1, Math.abs(L), Math.abs(R)), ok = { "=": Math.abs(L - R) <= e, "≈": Math.abs(L - R) <= .01 * Math.max(1, Math.abs(R)), ">": L > R + e, "<": L < R - e, ">=": L >= R - e, "≥": L >= R - e, "<=": L <= R + e, "≤": L <= R + e, "≠": Math.abs(L - R) > e }[o2];
+      if (!ok) return ctx.err(line.line, "验算不成立：" + line.text + "（" + parts[i].trim() + " 算出来是 " + (Math.round(L * 1e6) / 1e6) + "，" + parts[i + 2].trim() + " 是 " + (Math.round(R * 1e6) / 1e6) + "）", "重新算这道题；如果答案错了，题干的答案、步骤、图都要一起改");
+    }
   }
   var GENERIC_TITLE = /^\s*(例题?\s*\d*|练习\s*\d*|练一练|巩固(提升|练习)?|典例(精析)?|知识点(讲解)?|课堂练习|随堂(练习|检测)|拓展(提升)?|变式(训练)?\s*\d*)\s*[:：]?\s*$/;
   var EMPTY_STUCK = /计算量大|综合性强|基础(差|薄弱)|理解题意|审题不清|粗心|知识点(多|综合)|难度(大|较大)|不会做/;
+  // 「…= ==答案==」：等号前面那个式子和答案必须相等（代几组数比一比）。弱模型改答案时常常只改结论、推导不跟着改
+  function tex2calc(t) {
+    var s = String(t).replace(/\\left|\\right|\\,|\\!|\\ /g, "").replace(/[−–]/g, "-").trim(), prev;
+    do { prev = s; s = s.replace(/\\[dt]?frac\{([^{}]*)\}\{([^{}]*)\}/g, "(($1)/($2))").replace(/\\sqrt\{([^{}]*)\}/g, "sqrt($1)").replace(/\^\{([^{}]*)\}/g, "^($1)"); } while (s !== prev);
+    s = s.replace(/\\times|\\cdot/g, "*").replace(/\\pi/g, "pi").replace(/\|([^|]+)\|/g, "abs($1)");
+    return /[\\{}_|一-鿿<>≤≥]|[A-Za-z]{2,}(?!\()/.test(s.replace(/sqrt|abs|pi/g, "")) ? null : s;
+  }
+  function ansChain(text, line, ctx) {
+    var m = String(text).match(/\$([^$]*)=\s*\$\s*==\s*\$([^$]+)\$\s*==/);
+    if (!m) return;
+    var lhs = m[1].split("=").pop(), rhs = m[2].split("=").pop(), L = tex2calc(lhs), R = tex2calc(rhs);
+    if (!L || !R || !/\S/.test(L)) return;
+    var vars = (L + " " + R).replace(/sqrt|abs|pi/g, "").match(/[A-Za-z]/g) || [], bad = 0, tried = 0;
+    [[2.7, 1.3, 1.9], [5.1, 2.2, 0.7], [3.4, 0.6, 2.5]].forEach(function (vals) {
+      var env = {}; vars.forEach(function (v) { env[v] = vals[(v.charCodeAt(0) * 7) % 3] + v.charCodeAt(0) % 5 * 0.37; });
+      var a = calc(L, env), b = calc(R, env);
+      if (!isFinite(a) || !isFinite(b)) return;
+      tried++; if (Math.abs(a - b) > 1e-6 * Math.max(1, Math.abs(a), Math.abs(b))) bad++;
+    });
+    if (tried && bad === tried) ctx.err(line, "答案前面的式子 " + L.replace(/\s/g, "") + " 和答案 " + R.replace(/\s/g, "") + " 不相等（代数进去算出来不一样）", "上一步的式子推错了，或者答案只改了结论没改推导：从出错那一步起重新推，步骤、答案、验算要对得上");
+  }
+  // 步骤里写出来的纯数字比较（如「n>0>3」「-2<-5」）一定要成立：弱模型常把结论写反却不自知
+  var NUM = "(?:\\tfrac\\{\\d+\\}\\{\\d+\\}|\\d+(?:\\.\\d+)?)", REL = "(?:<|>|\\le(?:q)?|\\ge(?:q)?|≤|≥)";
+  var CHAIN = new RegExp("(^|[\\s,，;；(（=<>$])(-?" + NUM + "(?:\\s*" + REL + "\\s*-?" + NUM + ")+)(?=$|[\\s,，;；.。)）=$]|\\\\[a-z]*\\s)", "g");
+  function numVal(t) { var m = t.match(/^(-?)\\tfrac\{(\d+)\}\{(\d+)\}$/); return m ? (m[1] ? -1 : 1) * m[2] / m[3] : +t; }
+  function numCmp(text, line, ctx) {
+    String(text).replace(/\$([^$]+)\$/g, function (_, m) {
+      m.replace(CHAIN, function (all, pre, chain) {
+        var parts = chain.split(new RegExp("\\s*(" + REL + ")\\s*"));
+        for (var i = 1; i < parts.length; i += 2) {
+          var a = numVal(parts[i - 1]), b = numVal(parts[i + 1]), op = parts[i], ok = /</.test(op) || /le|≤/.test(op) ? (/<$/.test(op) ? a < b : a <= b) : (/>$/.test(op) ? a > b : a >= b);
+          if (/^\\le|≤/.test(op)) ok = a <= b; else if (/^\\ge|≥/.test(op)) ok = a >= b;
+          if (!ok) { ctx.err(line, "步骤里「" + chain.trim() + "」不成立（" + parts[i - 1] + " " + op + " " + parts[i + 1] + " 是错的）", "从这一步起重新推：结论很可能是错的，不许换个说法保留原来的结论；答案、图、验算要一起改"); return; }
+        }
+      });
+    });
+  }
   function intent(p, ctx, o, steps) {
     var need = steps.length > 0, warn = ctx.strict ? ctx.err : ctx.warn, ti = f(p, "标题");
     if (GENERIC_TITLE.test(ti.replace(/^(真题|课本原题)\s*[:：]\s*/, "")) || /^(练一练|练习\s*\d*|例\s*\d+)\s*[:：]/.test(ti)) warn(lineOf(p, "标题"), "标题「" + ti + "」没说出这道题的破题方法", "把「意图:」里的破题那句话当标题，例：「横着切一刀，范围就出来」「谁在上面，谁就大」");
     if (!need) return;
+    // 材料只有文字（--text-only）：题干说「如图」，图上才有的信息模型看不到，必须交给老师核
+    if (ctx.textOnly && /如图/.test(f(p, "题干") || "") && !f(p, "待核") && !/^原图/.test(f(p, "图") || "")) ctx.err(lineOf(p, "题干"), "题干写「如图」，但原始材料里没有图，图上的点、象限、长度你都看不到", "这一页加一行「待核: 原图没给文字，…要看原图；这里按 … 示意」，图按题意取一个示意的数；不许把猜的当成原图");
     if (f(p, "待核")) ctx.warn(lineOf(p, "待核"), "请老师核对：" + f(p, "待核"), "核对原图后改好题干和图，再删掉「待核:」这一行");
     var it = f(p, "意图"), c = cells(it);
     if (!it) warn(p.line, "这道题没写「意图:」", "在题干上面加一行「意图: 卡点 | 破题 | 常错」，写法见《读题与画面》第一节");
     else if (c.length < 3 || c.some(function (x) { return !x.trim(); })) warn(lineOf(p, "意图"), "「意图:」要写三段：卡点 | 破题 | 常错", "例：意图: 把「比 y」翻译成「比点的高低」 | 先分组：负的一组，正的一组 | 三个点一起套「减小」");
     else if (EMPTY_STUCK.test(c[0])) warn(lineOf(p, "意图"), "卡点写空了：「" + c[0] + "」对哪道题都成立", "写成「把 A 翻译成 B」：学生读完题到会动笔之间，缺的那一步转化是什么");
+    steps.forEach(function (s) { numCmp(s.text, s.line || lineOf(p, "步骤"), ctx); ansChain(s.text, s.line || lineOf(p, "步骤"), ctx); });
     var last = steps.filter(function (s) { return /==答案==/.test(s.text); }).pop(), ver = items(p, "验算");
     ver.forEach(function (v) { verify(v, ctx); });
     if (last && /\d/.test(last.text.split("==答案==")[1] || "") && !/^\s*[A-D][\s。.]*$/.test(IL.plain(last.text.split("==答案==")[1])) && !ver.length) warn(lineOf(p, "步骤"), "答案里有数，但这一页没有「验算:」", "加「验算:」列表，把答案里每个数写成算式让装配台算一遍，例：- -12/(-3) = 4");
@@ -314,7 +356,7 @@
   function render(doc, env) {
     env = env || {};
     var meta = {}; Object.keys(doc.meta).forEach(function (k) { if (k[0] !== "_") meta[k] = doc.meta[k].value; });
-    var ctx = { meta: meta, brand: env.brand, errors: [], warnings: [], figJs: [], deriveJs: [], labsJs: [], assets: {}, timers: 0, refs: [], levelsUsed: [], levelsHave: [], kick: {}, pageLines: {}, timerList: [], srcUsed: {}, stems: [], R: env.R || null, fill: env.fill || null, strict: !!env.strict };
+    var ctx = { meta: meta, brand: env.brand, errors: [], warnings: [], figJs: [], deriveJs: [], labsJs: [], assets: {}, timers: 0, refs: [], levelsUsed: [], levelsHave: [], kick: {}, pageLines: {}, timerList: [], srcUsed: {}, stems: [], R: env.R || null, fill: env.fill || null, strict: !!env.strict, textOnly: !!env.textOnly };
     ctx.err = function (line, msg, fix) { ctx.errors.push({ line: line, msg: msg, fix: fix }); };
     ctx.warn = function (line, msg, fix) { ctx.warnings.push({ line: line, msg: msg, fix: fix }); };
     doc.errors.forEach(function (e) { ctx.errors.push(e); }); doc.warnings.forEach(function (e) { ctx.warnings.push(e); });

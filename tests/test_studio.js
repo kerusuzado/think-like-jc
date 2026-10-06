@@ -24,6 +24,17 @@ for (const f of ["新授课", "专题课", "讲评课", "微论坛", "成绩分�
   ok(r.html.indexOf("window.JP_DATA = ") < 0 || /讲评|成绩/.test(f), f + " 不该带成绩数据");
 }
 
+// 弱模型兜底检查：步骤里的纯数字比较、「式子 = ==答案==」、纯文字材料里的「如图」
+{
+  const base = fs.readFileSync(path.join(ROOT, "studio/examples/新授课.txt"), "utf8");
+  const bad = base.replace("\n步骤:\n", "\n步骤:\n- 因为 $n>0>3$，所以\n- $S=a-b=$ ==$a+b$==\n").replace("\n题干: 说出", "\n题干: 如图，说出");
+  const es = ENG.build(bad, { R, katex, textOnly: true }).errors.map(e => e.msg).join("\n");
+  ok(/「0>3」不成立/.test(es), "步骤里 0>3 没拦下");
+  ok(/不相等/.test(es), "式子和答案不相等没拦下");
+  ok(/题干写「如图」/.test(es), "纯文字材料的「如图」没要求待核");
+  ok(!/不成立|不相等|如图/.test(ENG.build(base, { R, katex, textOnly: false }).errors.map(e => e.msg).join()), "好样例被误报");
+}
+
 // 解析器细节
 const d = P.parse("@课件\n场景: 新授课\n章节: 甲 | 乙\n\n@页 三卡 [乙]\n标题: t\n卡1: 绝对值 | $|h|$ 的意思\n\n", PG.schema);
 ok(d.meta.章节.value === "甲 | 乙", "字段值尾部空行没去掉");
