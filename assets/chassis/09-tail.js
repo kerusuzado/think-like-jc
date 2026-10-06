@@ -461,12 +461,17 @@ function fitPage(p){
       el.dataset.zw = el.style.width || ""; el.dataset.zh = el.style.height || "";
       el.parentNode.replaceChild(ph, el); node = el; }
     else { node = el.cloneNode(true); node.removeAttribute("data-zoom"); node.removeAttribute("id");
-      $$("[id]", node).forEach(function(x){ x.removeAttribute("id"); }); }
+      $$("[id]", node).forEach(function(x){ x.removeAttribute("id"); });
+      node.style.margin = "0"; }
     box.appendChild(node); body.appendChild(box);
     lbx.classList.add("on");
     var W = body.clientWidth - 48, H = body.clientHeight - 48;
+    node.style.width = w0 + "px";
+    // 克隆离开了原来的祖先（如讲题中 .q.solving 把题干缩成小字），在灯箱里会按正常字号重排、变高；
+    // 按灯箱里的实际内容再量一次高度，否则下半截被裁（10-06 老师反馈）
+    if (!live){ node.style.height = "auto"; h0 = Math.max(h0, node.offsetHeight); }
     var k = Math.min(W / w0, H / h0);
-    node.style.width = w0 + "px"; node.style.height = h0 + "px";
+    node.style.height = h0 + "px";
     node.style.transform = "scale(" + k + ")";
     box.style.width = Math.round(w0 * k) + "px"; box.style.height = Math.round(h0 * k) + "px";
   }
