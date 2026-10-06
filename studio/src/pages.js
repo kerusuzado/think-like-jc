@@ -315,6 +315,7 @@
       if (y.src.length && sim > 0.65) { ctx.warn(x.line, x.no + " 和第 " + y.line + " 行的" + y.no + "（原稿第 " + y.src.join("、") + " 题）几乎一样", "如果是把原稿这道题拆开讲，就在这页也写「原题: " + y.src[0] + "」；如果是重复，删掉这页（真题只出现一次，带「出处:」）；如果是有意配的变式题，不用管"); return true; }
       if (!y.src.length && sim > 0.9) { ctx.err(x.line, x.no + " 和第 " + y.line + " 行的" + y.no + "是同一道题", "删掉重复的那页"); return true; }
     }); });
+    if (!meta.原稿题号 && (scene === "新授课" || scene === "专题课")) ctx.warn(1, "没写「原稿题号:」——如果这份课件是从导学课件/学案改出来的，装配台就没法核对有没有漏题", "在 @课件 下写「原稿题号: 1-7」，每页写「原题: N」；完全原创的课件可以不管");
     if (meta.原稿题号) {                      // 原稿每道题都要有去处：用在某页（原题: N），或在「删题:」写明理由
       var cut = {}; (meta.删题 || "").split(/[；;\n]/).forEach(function (seg) { var ns = nums(seg.replace(/[(（][^)）]*[)）]/g, "")), why = seg.replace(/^[\s\d,，、\-–~～至到第题]+/, "").trim();
         ns.forEach(function (k) { cut[k] = why; }); if (ns.length && !why) ctx.err(doc.meta.删题.line, "删题没写理由：" + seg.trim(), "例：删题: 5 和例2同类；8 超出本节进度"); });
