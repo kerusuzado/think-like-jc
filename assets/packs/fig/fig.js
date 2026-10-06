@@ -61,7 +61,7 @@ var FG = (function(){
     S.items.forEach(function(it){ if (it.kind !== "curve") return; var g = new Function("x", "return " + it.js), a = it.from != null ? it.from : x0, b = it.to != null ? it.to : x1;
       for (var k = 0; k <= 60; k++){ var xx = a + (b - a) * k / 60, yy = g(xx); if (isFinite(yy)) PTS.push([X(xx), Y(yy)]); } });
     for (var ax = 0; ax <= 40; ax++){ PTS.push([X(x0 + (x1 - x0) * ax / 40), Y(0) + 8]); PTS.push([X(0) - 12, Y(y0 + (y1 - y0) * ax / 40)]); }   // 坐标轴和刻度字也算障碍
-    S.items.forEach(function(it){ if (it.kind === "point" && typeof it.x === "number"){ PTS.push([X(it.x), Y(it.y)]); if (it.coord || it.name) for (var q = 0; q <= 6; q++) PTS.push([X(it.x) + 10 + q * 12, Y(it.y) - 16]); }
+    S.items.forEach(function(it){ if (it.kind === "point" && typeof it.x === "number"){ PTS.push([X(it.x), Y(it.y)]); if (it.coord || it.name) for (var q = 0; q <= 6; q++) PTS.push([X(it.x) + (X(it.x) > W * .72 && !it.dx ? -10 - q * 12 : 10 + q * 12), Y(it.y) - 16]); }
       if (it.kind === "vline" && typeof it.v === "number") for (var q2 = 0; q2 <= 20; q2++) PTS.push([X(it.v), Y(y0 + (y1 - y0) * q2 / 20)]);
       if (it.kind === "hline" && typeof it.v === "number") for (var q3 = 0; q3 <= 20; q3++) PTS.push([X(x0 + (x1 - x0) * q3 / 20), Y(it.v)]); });
     /* 曲线名：在「角落 + 曲线末端」几个候选位置里，挑离所有曲线和已放标签最远的那个 */
@@ -74,7 +74,7 @@ var FG = (function(){
         if (!best || sc > bd + 4){ bd = sc; best = q; best.inn = inn; } });
       placed.push(best); return best;
     }
-    S.items.forEach(function(it){
+    S.items.slice().sort(function(a, b){ return (b.kind === "poly") - (a.kind === "poly"); }).forEach(function(it){
       var G = grp(L, it), c = col(it.color, it.kind === "curve" ? ci++ : 2), n;
       if (it.kind === "curve"){
         var f = new Function("x", "return " + it.js), d = "", pen = false, xa = it.from != null ? it.from : x0, xb = it.to != null ? it.to : x1;
@@ -86,8 +86,9 @@ var FG = (function(){
           else ovl(ov, [W, H], q[0], q[1], KX(it.label), "fg-lbl"); } }
       } else if (it.kind === "point"){
         n = el("circle", {cx:X(it.x), cy:Y(it.y), r:4.8, fill:it.hollow ? "#fff" : c, stroke:c, "stroke-width":2}, G.g);
-        if (it.name && !it.coord) T(G.g, X(it.x) + (it.dx || 10), Y(it.y) + (it.dy || -12), it.name, {i:/^[A-Za-z]'?$/.test(it.name), s:15, w:700, a:"start"});
-        if (it.coord) ovl(ov, [W, H], X(it.x) + 10, Y(it.y) - 16, KX(it.coord), "fg-lbl fg-sm L");
+        var rt = X(it.x) > W * .72 && !it.dx;      // 靠右边的点：字放到点的左边，免得出图框
+        if (it.name && !it.coord) T(G.g, X(it.x) + (it.dx || (rt ? -10 : 10)), Y(it.y) + (it.dy || -12), it.name, {i:/^[A-Za-z]'?$/.test(it.name), s:15, w:700, a:rt ? "end" : "start"});
+        if (it.coord) ovl(ov, [W, H], X(it.x) + (rt ? -10 : 10), Y(it.y) - 16, KX(it.coord), "fg-lbl fg-sm " + (rt ? "R" : "L"));
       } else if (it.kind === "vline" || it.kind === "hline"){
         var v = it.kind === "vline";
         n = el("line", v ? {x1:X(it.v), y1:Y(y0), x2:X(it.v), y2:Y(y1)} : {x1:X(x0), y1:Y(it.v), x2:X(x1), y2:Y(it.v)}, G.g);
@@ -95,6 +96,11 @@ var FG = (function(){
         if (it.label) T(G.g, v ? X(it.v) + 6 : X(x1) - 4, v ? Y(y1) + 10 : Y(it.v) - 10, it.label, {s:13, c:c, a:v ? "start" : "end", w:700});
       } else if (it.kind === "seg"){
         n = el("line", {x1:X(it.a[0]), y1:Y(it.a[1]), x2:X(it.b[0]), y2:Y(it.b[1]), stroke:c, "stroke-width":2.4, "stroke-dasharray":it.dash ? "6 5" : ""}, G.g);
+        if (it.label) T(G.g, (X(it.a[0]) + X(it.b[0])) / 2 + 8, (Y(it.a[1]) + Y(it.b[1])) / 2 - 8, it.label, {s:13, c:c, w:700, a:"start"});
+      } else if (it.kind === "poly"){              // 面积阴影：淡填充 + 边框；「标」的文字放在重心
+        var pc = it.color ? c : C.c[3], dd = it.pts.map(function(p, i){ return (i ? "L" : "M") + X(p[0]).toFixed(1) + " " + Y(p[1]).toFixed(1); }).join("") + "Z";
+        n = el("path", {d:dd, fill:pc, "fill-opacity":.22, stroke:pc, "stroke-width":1.8, "stroke-dasharray":it.dash ? "6 5" : "", "stroke-linejoin":"round"}, G.g);
+        if (it.label){ var gx2 = 0, gy2 = 0; it.pts.forEach(function(p){ gx2 += X(p[0]); gy2 += Y(p[1]); }); T(G.g, gx2 / it.pts.length, gy2 / it.pts.length, it.label, {s:14, c:C.ink, w:700}); }
       } else if (it.kind === "band"){
         n = el("rect", {x:X(it.a), y:pad, width:X(it.b) - X(it.a), height:H - 2*pad, fill:c, opacity:.13}, G.g);
       } else if (it.kind === "note"){

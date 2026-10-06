@@ -45,6 +45,7 @@
   function stepsHtml(its, ctx, keysOut) {
     return its.map(function (it) {
       var s = P.step(it.text), a = "";
+      s.keys = s.keys.map(function (k) { return k.replace(/^\+/, ""); });     // 「+」只在图里表示“到这步才出现”；步骤里写了也照认
       if (s.keys.length) { a += ' data-hl="' + s.keys.join(" ") + '"'; s.keys.forEach(function (k) { keysOut[k] = it.line; }); }
       if (s.danger) a += ' data-danger="1"';
       return "<li" + a + ">" + T(s.text, ctx) + "</li>";
@@ -64,16 +65,37 @@
   }
 
   /* ── 步进题（例题 / 练习 / 讲题 / 精选）── */
+  function nums(t) {                       // 「2,3」「2-4」「第5题」→ [2,3] / [2,3,4] / [5]
+    var r = []; (t || "").replace(/(\d+)\s*[-–~～至到]\s*(\d+)|(\d+)/g, function (_, a, b, c) { if (c) r.push(+c); else for (var i = +a; i <= +b && i - a < 40; i++) r.push(i); }); return r;
+  }
+  function grams(t) {                      // 题干去掉空格、$、\tfrac 之类后的两字片段，用来认出同一道题
+    var c = (t || "").replace(/\\[a-z]+|[\s$（）()，,。.、；;：:{}_^]/g, ""), g = {}; for (var i = 0; i < c.length - 1; i++) g[c.substr(i, 2)] = 1; return g;
+  }
   function question(p, ctx, o) {
     var tcols = /^表格/.test(f(p, "图")) ? Math.max.apply(0, items(p, "图").map(function (i) { return cells(i.text).length; }).concat([0])) : 0;
     var used = {}, wide = /是|宽/.test(f(p, "宽图")) || /^原文/.test(f(p, "图")) || tcols >= 3;       // 三列以上的表放宽栏，免得一字一行
     var fig = figure(p, ctx, "", wide);
     var steps = items(p, "步骤"), tm = parseTime(f(p, "计时"), ctx, lineOf(p, "计时"));
     if (o.timed && !tm && steps.length === 0) ctx.err(p.line, "练习页要写计时", "加一行「计时: 4:00」");
-    if (!o.timed && tm && ctx.scene !== "微论坛") { ctx.warn(lineOf(p, "计时"), "这一页不计时，计时已忽略", "要计时请用「练习」页"); tm = null; }
+    if (o.timeOk && !tm && (ctx.scene === "新授课" || ctx.scene === "专题课")) ctx.err(p.line, "例题页也要计时（" + ctx.scene + "的例题和练习一起凑 20:00）", "加一行「计时: 3:00」（例题一般 2:00～3:30），再从练习里匀出这段时间");
+    // 图和字打架：图注 / 题干说「二、四象限」，画出来的 y=k/x 却全在一、三象限（或反过来）
+    var ks = items(p, "图").map(function (i) { var m = i.text.match(/^曲线\s*y\s*=\s*(-)?\s*(\d+(?:\.\d+)?)\s*\/\s*x\s*(?:$|\s|\[)/); return m ? (m[1] ? -1 : 1) : 0; }).filter(Boolean);
+    var said = (f(p, "图注") || "") + " " + (f(p, "题干") || "");
+    if (ks.length && /^函数/.test(f(p, "图"))) {
+      var s13 = /一\s*[、，,和与]?\s*三\s*象限/.test(said), s24 = /二\s*[、，,和与]?\s*四\s*象限/.test(said);
+      if (s24 && !s13 && ks.every(function (k) { return k > 0; })) ctx.err(lineOf(p, "图"), "图注或题干说图象在二、四象限，但图里画的 y=k/x 的 k 都是正数（在一、三象限）", "把图里的曲线改成本题算出的解析式（k 是负数），点也要在这条曲线上");
+      if (s13 && !s24 && ks.every(function (k) { return k < 0; })) ctx.err(lineOf(p, "图"), "图注或题干说图象在一、三象限，但图里画的 y=k/x 的 k 都是负数（在二、四象限）", "把图里的曲线改成本题算出的解析式（k 是正数），点也要在这条曲线上");
+    }
+    if (!o.timed && !o.timeOk && tm && ctx.scene !== "微论坛") { ctx.warn(lineOf(p, "计时"), "这一页不计时，计时已忽略", "要计时请用「练习」或「例题」页"); tm = null; }
     if (tm) { ctx.timers += tm[0] * 60 + tm[1]; ctx.timerList.push({ line: lineOf(p, "计时"), sec: tm[0] * 60 + tm[1] }); }
     var li = stepsHtml(steps, ctx, used);
     checkKeys(ctx, used, fig);
+    nums(f(p, "原题")).forEach(function (k) { ctx.srcUsed[k] = 1; });
+    if (f(p, "题干")) ctx.stems.push({ line: lineOf(p, "题干"), no: f(p, "题号") || "", g: grams(f(p, "题干")), src: nums(f(p, "原题")) });
+    // 弱模型常犯：题干没给选项，答案却写「选 C」（选项字母是编的）
+    var ans = steps.map(function (s) { return s.text; }).join(" "), stem = f(p, "题干") || "";
+    if (/选\s*[（(]?\s*[A-D]\b/.test(ans) && !/(^|[\s；;，,(（])[A-D]\s*[.．、:：]|[（(][A-D][)）]/.test(stem))
+      ctx.err(lineOf(p, "步骤"), "答案写了「选 A/B/C/D」，但题干里没有选项", "原题是选择题就把选项抄进题干（A. … B. … C. … D. …）；不是选择题就删掉「选 X」，直接写结果");
     var keys = cells(f(p, "小问") || "").filter(Boolean);
     var rate = "", names = "";
     if (keys.length && ctx.R) { rate = "　" + ctx.R.rateHtml(keys, ctx); names = ctx.R.namesHtml(keys, ctx, p); }
@@ -118,8 +140,8 @@
       return '<div class="dec">' + items(p, "问答").map(function (it, i) { var c = cells(it.text.replace(/\s*(→|=>)\s*/, "|"));
         return '<div class="dec-row"><div class="dec-q">' + T(c[0], ctx) + '</div><div class="dec-a a' + (i % 4 + 1) + '">' + T(c[1] || "", ctx) + '</div><div class="dec-note">' + T(c[2] || "", ctx) + "</div></div>"; }).join("") +
         "</div>" + (f(p, "收束") ? '<div class="dec-tip">' + T(f(p, "收束"), ctx) + "</div>" : ""); } },
-    "例题": { scenes: "新授课 专题课", keys: ["标题", "题号", "标签", "提示", "题干", "步骤", "图", "图注", "侧栏", "变式", "出处", "做笔记", "页底", "宽图"], render: function (p, ctx) { return question(p, ctx, { no: "例", tag: "例题" }); } },
-    "练习": { scenes: "新授课", keys: ["标题", "题号", "标签", "提示", "题干", "步骤", "图", "图注", "侧栏", "计时", "出处", "做笔记", "提示条", "宽图", "变式"], render: function (p, ctx) { return question(p, ctx, { timed: true, no: "练习", tag: "练习" }); } },
+    "例题": { scenes: "新授课 专题课", keys: ["标题", "题号", "标签", "提示", "题干", "步骤", "图", "图注", "侧栏", "计时", "变式", "出处", "做笔记", "页底", "宽图", "原题"], render: function (p, ctx) { return question(p, ctx, { no: "例", tag: "例题", timeOk: true }); } },
+    "练习": { scenes: "新授课 专题课", keys: ["标题", "题号", "标签", "提示", "题干", "步骤", "图", "图注", "侧栏", "计时", "出处", "做笔记", "提示条", "宽图", "变式", "原题"], render: function (p, ctx) { return question(p, ctx, { timed: true, no: "练习", tag: "练习" }); } },
     "推导": { scenes: "新授课 专题课 微论坛", keys: ["标题", "题号", "题干", "推导标题", "依据", "推导", "结论", "技巧", "高度"], render: function (p, ctx) {
       var rows = DV.rowsOf(items(p, "推导")); if (rows.length < 2) ctx.err(lineOf(p, "推导"), "推导至少写两行式子", "每行「- 式子 | 这一步做了什么」");
       var id = "dv" + ctx.pid.replace(/\W/g, ""), D = DV.build(T(f(p, "推导标题") || "推导", ctx), f(p, "依据") ? "依据：" + T(f(p, "依据"), ctx) : "", rows);
@@ -244,7 +266,7 @@
         return '<tr><td class="n" style="color:' + col + '">' + T(c[0], ctx) + '</td><td style="color:' + col + '">' + T(c[1] || "", ctx) + '</td><td style="color:' + col + '">' + T(c[2] || "", ctx) + "</td></tr>"; }).join("") + "</table>";
       return h + (f(p, "脚注") ? '<div class="mf-cite clear-chrome">' + T(f(p, "脚注"), ctx) + "</div>" : ""); } }
   };
-  var META = ["场景", "学段", "年级", "学科", "标题", "页眉", "大字", "小标签", "副标题", "署名", "署名2", "章节", "主讲", "科组", "日期", "课型", "考试", "满分", "阈值", "冲", "保", "保密"];
+  var META = ["场景", "学段", "年级", "学科", "标题", "页眉", "大字", "小标签", "副标题", "署名", "署名2", "章节", "主讲", "科组", "日期", "课型", "考试", "满分", "阈值", "冲", "保", "保密", "原稿题号", "删题"];
   var SCENES = { "新授课": 1, "专题课": 1, "讲评课": 1, "微论坛": 1, "成绩分析": 1 };
   var schema = {
     metaKeys: META, types: TYPES,
@@ -255,7 +277,7 @@
   function render(doc, env) {
     env = env || {};
     var meta = {}; Object.keys(doc.meta).forEach(function (k) { if (k[0] !== "_") meta[k] = doc.meta[k].value; });
-    var ctx = { meta: meta, brand: env.brand, errors: [], warnings: [], figJs: [], deriveJs: [], labsJs: [], assets: {}, timers: 0, refs: [], levelsUsed: [], levelsHave: [], kick: {}, pageLines: {}, timerList: [], R: env.R || null, fill: env.fill || null };
+    var ctx = { meta: meta, brand: env.brand, errors: [], warnings: [], figJs: [], deriveJs: [], labsJs: [], assets: {}, timers: 0, refs: [], levelsUsed: [], levelsHave: [], kick: {}, pageLines: {}, timerList: [], srcUsed: {}, stems: [], R: env.R || null, fill: env.fill || null };
     ctx.err = function (line, msg, fix) { ctx.errors.push({ line: line, msg: msg, fix: fix }); };
     ctx.warn = function (line, msg, fix) { ctx.warnings.push({ line: line, msg: msg, fix: fix }); };
     doc.errors.forEach(function (e) { ctx.errors.push(e); }); doc.warnings.forEach(function (e) { ctx.warnings.push(e); });
@@ -286,11 +308,24 @@
       ctx.levelsUsed.forEach(function (u) { if (ctx.levelsHave.length && ctx.levelsHave.indexOf(u[0]) < 0) ctx.err(u[1], "精选题标的「" + u[0] + "」在学习层级表里找不到", "层级表里加这一层，或改精选题的层次"); });
       ctx.refs.forEach(function (r, i) { if (i && r !== ctx.refs[i - 1] + 1) ctx.warn(null, "文献编号不连续：[" + ctx.refs[i - 1] + "] 后面是 [" + r + "]", "全课文献从 [1] 起连续编号"); });
     }
-    var need = { "新授课": 1200, "专题课": 0, "讲评课": 0, "微论坛": null, "成绩分析": 0 }[scene];
+    ctx.stems.forEach(function (x, i) { ctx.stems.some(function (y, j) {      // 没标「原题」的页和标了的页几乎一样 → 要么是拆开讲（补标），要么是重复（删掉）
+      if (i === j || x.src.length || (!y.src.length && j > i)) return false;
+      var kx = Object.keys(x.g), ky = Object.keys(y.g); if (kx.length < 12 || ky.length < 12) return false;
+      var sim = kx.filter(function (k) { return y.g[k]; }).length / Math.min(kx.length, ky.length);
+      if (y.src.length && sim > 0.65) { ctx.warn(x.line, x.no + " 和第 " + y.line + " 行的" + y.no + "（原稿第 " + y.src.join("、") + " 题）几乎一样", "如果是把原稿这道题拆开讲，就在这页也写「原题: " + y.src[0] + "」；如果是重复，删掉这页（真题只出现一次，带「出处:」）；如果是有意配的变式题，不用管"); return true; }
+      if (!y.src.length && sim > 0.9) { ctx.err(x.line, x.no + " 和第 " + y.line + " 行的" + y.no + "是同一道题", "删掉重复的那页"); return true; }
+    }); });
+    if (meta.原稿题号) {                      // 原稿每道题都要有去处：用在某页（原题: N），或在「删题:」写明理由
+      var cut = {}; (meta.删题 || "").split(/[；;\n]/).forEach(function (seg) { var ns = nums(seg.replace(/[(（][^)）]*[)）]/g, "")), why = seg.replace(/^[\s\d,，、\-–~～至到第题]+/, "").trim();
+        ns.forEach(function (k) { cut[k] = why; }); if (ns.length && !why) ctx.err(doc.meta.删题.line, "删题没写理由：" + seg.trim(), "例：删题: 5 和例2同类；8 超出本节进度"); });
+      var miss = nums(meta.原稿题号).filter(function (k) { return !ctx.srcUsed[k] && cut[k] == null; });
+      if (miss.length) ctx.err(doc.meta.原稿题号.line, "原稿第 " + miss.join("、") + " 题没有用上，也没在「删题:」里说明", "把它做成例题/练习页并写「原题: " + miss[0] + "」；确实不要就在 @课件 下写「删题: " + miss[0] + " 理由」");
+    }
+    var need = { "新授课": 1200, "专题课": 1200, "讲评课": 0, "微论坛": null, "成绩分析": 0 }[scene];
     if (need != null && ctx.timers !== need) {
       var mmss = function (t) { return Math.floor(t / 60) + ":" + (t % 60 < 10 ? "0" : "") + t % 60; }, TL = ctx.timerList, fix;
       if (!need) fix = scene + "不设计时器，删掉第 " + TL.map(function (t) { return t.line; }).join("、") + " 行的「计时:」";
-      else if (!TL.length) fix = "新授课要有练习页（@页 练习）并写「计时:」，加起来 20:00";
+      else if (!TL.length) fix = scene + "的例题页和练习页都要写「计时:」（例题一般 2:00～3:30），全课加起来正好 20:00";
       else {                                   // 按原比例摊到 20:00，取整到 30 秒，余数给最后一页
         var sug = TL.map(function (t) { return Math.max(60, Math.round(t.sec / ctx.timers * need / 30) * 30); }), rest = need - sug.reduce(function (a, b) { return a + b; }, 0);
         sug[sug.length - 1] += rest; if (sug[sug.length - 1] < 60) sug = TL.map(function (_, i) { return i < TL.length - 1 ? Math.floor(need / TL.length / 30) * 30 : need - Math.floor(need / TL.length / 30) * 30 * (TL.length - 1); });

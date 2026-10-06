@@ -66,14 +66,14 @@ body{
 
 /* ── 每页的绿色通栏 header（版式圣经：高≈页高 12%） ─────────── */
 .page-head{
-  height:84px;background:var(--brand-deep);
+  height:56px;background:var(--brand-deep);
   display:flex;align-items:center;gap:16px;padding:0 34px;position:relative;
 }
-.page-head .emblem{width:52px;height:52px;border-radius:50%;background:#fff;
+.page-head .emblem{width:40px;height:40px;border-radius:50%;background:#fff;
   display:grid;place-items:center;box-shadow:0 0 0 2px rgba(var(--light-rgb),.55);flex:none}
-.page-head .emblem i{width:44px;height:44px;display:block;
+.page-head .emblem i{width:34px;height:34px;display:block;
   background:var(--emblem-img) center/contain no-repeat}
-.page-head .school{width:232px;height:27px;flex:none;
+.page-head .school{width:190px;height:22px;flex:none;
   background:var(--wordmark-img) left center/contain no-repeat;
   filter:drop-shadow(0 1px 3px rgba(0,0,0,.35))}
 .page-head .school.txt{width:auto;height:auto;background:none;filter:none;color:#fff;font-size:17px;
@@ -97,7 +97,7 @@ body{
   box-shadow:0 0 12px rgba(var(--bright-rgb),.7);transition:width .42s var(--ease)}
 
 /* ── 页正文 ─────────────────────────────────────────────── */
-.page-body{padding:22px 46px 30px;position:relative;min-height:636px}
+.page-body{padding:18px 46px 26px;position:relative;min-height:664px}
 .page-kicker{font-size:14px;letter-spacing:.22em;color:var(--brand);font-weight:700;margin-bottom:4px}
 .titlebar{display:flex;align-items:baseline;gap:16px;margin-bottom:8px}
 .titlebar .page-title{margin:0}
@@ -617,6 +617,7 @@ body{
 .ovl-i{position:absolute;transform:translate(-50%,-50%);white-space:nowrap;line-height:1.25;
   text-align:center}
 .ovl-i.L{transform:translate(0,-50%);text-align:left}
+.ovl-i.R{transform:translate(-100%,-50%);text-align:right}
 .ovl-i .katex{font-size:1.02em}
 .ovl-i .nv{font-family:"Times New Roman",serif;font-weight:700;font-variant-numeric:tabular-nums}
 .lab-side{display:flex;flex-direction:column;gap:10px}
@@ -962,8 +963,8 @@ input[type=range]::-webkit-slider-thumb:active{cursor:grabbing;transform:scale(1
 .lbx-fit>*{position:absolute;left:0;top:0;transform-origin:0 0}
 .lbx-fit .zoom-btn,.lbx-ph{display:none}
 /* ══ 大字档（2026-09-28 老师建议）：内容区整体放大 1.25／1.5 倍，按窄一号的宽度重新排版，超出一页的上下滑 ══ */
-body.fz-1 .page:not(.cover-page) .page-body{zoom:1.25;width:1024px;min-height:509px}
-body.fz-2 .page:not(.cover-page) .page-body{zoom:1.5;width:853px;min-height:424px}
+body.fz-1 .page:not(.cover-page) .page-body{zoom:1.25;width:1024px;min-height:531px}
+body.fz-2 .page:not(.cover-page) .page-body{zoom:1.5;width:853px;min-height:443px}
 /* 大字档下左右两栏改成上下排，整页往下滑着看（固定宽的一栏不再把另一栏挤成窄条） */
 body.fz-1 .page:not(.cover-page) .q,body.fz-2 .page:not(.cover-page) .q{grid-template-columns:minmax(0,1fr)!important;height:auto!important}
 body.fz-1 .page:not(.cover-page) .q-main,body.fz-2 .page:not(.cover-page) .q-main,

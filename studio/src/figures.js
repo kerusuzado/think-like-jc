@@ -14,6 +14,7 @@
     t = t.replace(/[\[【]\s*(\+?)\s*([\w\u4e00-\u9fff-]+)\s*[\]】]/, function (_, p, k) { o.key = k; o.reveal = !!p; return " "; });
     t = t.replace(/(^|\s)(红|蓝|绿|黄|紫|青|金)(色)?(?=\s|$)/, function (_, a, c) { o.color = c; return a; });
     if (/虚线/.test(t)) { o.dash = true; t = t.replace("虚线", " "); }
+    t = t.replace(/(^|\s)虚(?=\s|$)/, function (_, a) { o.dash = true; return a; });   // 弱模型常只写一个「虚」
     if (/空心/.test(t)) { o.hollow = true; t = t.replace("空心", " "); }
     o.rest = t.replace(/\s+/g, " ").trim();
     return o;
@@ -34,7 +35,12 @@
     vars.forEach(function (v) { e = e.replace(new RegExp("(^|[^A-Za-z.])" + v + "(?=x)", "g"), "$1" + v + "*").replace(new RegExp("x(?=" + v + "(?![A-Za-z]))", "g"), "x*"); });
     vars.forEach(function (v) { e = e.replace(new RegExp("(\\d)\\s*" + v + "\\b", "g"), "$1*" + v).replace(new RegExp("\\b" + v + "\\s*\\(", "g"), v + "*("); });
     try { var f = new Function(["x"].concat(vars).join(","), "return " + e); [0.37, 1.3, -2.1].forEach(function (x) { f.apply(null, [x].concat(vars.map(function () { return 1.7; }))); }); }
-    catch (err) { return { err: "看不懂这个式子：" + s }; }
+    catch (err) {
+      var lt = s.replace(/^\s*y\s*=/, "").replace(/\\[a-z]+|Math|sqrt|abs|sin|cos|tan|log|ln/g, "").match(/[A-Za-z]/g);
+      lt = (lt || []).filter(function (c) { return c !== "x" && vars.indexOf(c) < 0; });
+      if (lt.length) return { err: "曲线里有字母「" + lt[0] + "」，图里只能画具体数字的式子：" + s, fix: "先把 " + lt[0] + " 算出来再画；算不出来（比如题目只说一支在第一象限）就挑一个符合题意的数示意，如 y=2/x，图注写「示意图」" };
+      return { err: "看不懂这个式子：" + s };
+    }
     var rest = e.replace(/Math\.\w+/g, ""); vars.forEach(function (v) { rest = rest.replace(new RegExp("\\b" + v + "\\b", "g"), ""); });
     if (/[^\sx\d.+\-*/()Mathsqrcoinlgbp,PIE]/.test(rest)) return { err: "式子里有看不懂的字：" + s + "（自变量只能用 x；滑条变量要在「拖:」里声明）" };
     return { js: e, tex: /^y\s*=/.test(tex) ? tex : "y=" + tex };
@@ -46,6 +52,25 @@
     if (/^-?\d+(\.\d+)?$/.test(t)) return +t;
     if (vars && vars.length) { var r = expr(t, vars); if (!r.err) return { $: r.js }; }
     return NaN;
+  }
+  /* 顶点串：「O-A-P-B」或「(0,0)-(2,0)-(a,6/a)」，可混写；点名要先用「点」画出来，O 默认原点。尾巴「标 文字」放在图形中间 */
+  function verts(t, items, vars){
+    var lab = "", mm = t.match(/\s+(?:标|名)\s*(.+)$/); if (mm){ lab = mm[1].trim(); t = t.slice(0, mm.index); }
+    var toks = [], depth = 0, cur = "";
+    t.replace(/[—到]/g, "-").replace(/\s+/g, "").split("").forEach(function(ch){
+      if (ch === "(" || ch === "（") depth++; if (ch === ")" || ch === "）") depth--;
+      if (ch === "-" && depth === 0 && cur && !/[,，(（]$/.test(cur)){ toks.push(cur); cur = ""; } else cur += ch; });
+    if (cur) toks.push(cur);
+    var pts = [];
+    for (var i = 0; i < toks.length; i++){
+      var k = toks[i], c = k.match(/^[（(](.+)[,，](.+)[)）]$/);
+      if (c){ var x = val(c[1], vars), y = val(c[2], vars); if (x !== x || y !== y) return { err: "顶点坐标看不懂：" + k }; pts.push([x, y]); continue; }
+      var hit = null; for (var j = items.length - 1; j >= 0; j--) if (items[j].kind === "point" && items[j].name === k){ hit = items[j]; break; }
+      if (hit){ pts.push([hit.x, hit.y]); continue; }
+      if (k === "O"){ pts.push([0, 0]); continue; }
+      return { err: "顶点「" + k + "」没找到：要么写坐标 (x,y)，要么先在这一项上面用「点 " + k + "(x,y)」画出来" };
+    }
+    return { pts: pts, label: lab };
   }
   function build(field, cap, ctx) {
     var head = (field.value || "").trim(), items = field.items || [], errs = [];
@@ -92,7 +117,7 @@
         var o = opts(it.text), t = o.rest, it2 = { key: o.key, reveal: o.reveal, color: o.color, dash: o.dash, hollow: o.hollow };
         if ((m = t.match(/^(?:曲线|函数|直线)\s*(.+)$/))) {
           var fr = m[1].match(/从\s*(.+?)\s*到\s*(.+?)\s*(?:名|不标|无标签|$)/); var ex = m[1].replace(/从.*$/, "").replace(/名\s*.*$/, "").replace(/不标|无标签/, "").trim();
-          var r = expr(ex, ctx.vars); if (r.err) return E(it.line, r.err, /自变量用 x（现在左边/.test(r.err) ? "例：曲线 y=0.01x（横轴、纵轴的物理量名写在「图:」第一行）" : "写成 y=x^2-2x-3 这样（乘号可以省略，分数写 \\frac{a}{b}）");
+          var r = expr(ex, ctx.vars); if (r.err) return E(it.line, r.err, r.fix || (/自变量用 x（现在左边/.test(r.err) ? "例：曲线 y=0.01x（横轴、纵轴的物理量名写在「图:」第一行）" : "写成 y=x^2-2x-3 这样（乘号可以省略，分数写 \\frac{a}{b}）"));
           it2.kind = "curve"; it2.js = r.js; it2.label = /不标|无标签/.test(m[1]) || (ctx.vars && ctx.vars.length) ? "" : r.tex;
           if (fr) { it2.from = val(fr[1], ctx.vars); it2.to = val(fr[2], ctx.vars); if (it2.from !== it2.from || it2.to !== it2.to) return E(it.line, "「从 … 到 …」看不懂", "例：从 -1 到 3，或含滑条变量：从 (20-L)/2 到 10"); }
         } else if ((m = t.match(/^点\s*([A-Za-z\u4e00-\u9fa5]'?)?\s*[（(]\s*([^,，()（）]+(?:\([^()]*\))?[^,，()（）]*)\s*[,，]\s*(.+?)\s*[)）](.*)$/))) {
@@ -101,10 +126,16 @@
           if (/坐标/.test(m[4])) it2.coord = (m[1] || "") + "(" + m[2] + "," + m[3] + ")";
         } else if ((m = t.match(/^竖线\s*x\s*=\s*(\S+)\s*(.*)$/))) { it2.kind = "vline"; it2.v = val(m[1], ctx.vars); it2.label = m[2] || ""; it2.dash = true; if (it2.v !== it2.v) return E(it.line, "竖线位置看不懂：" + t, "例：竖线 x=1 对称轴"); }
         else if ((m = t.match(/^横线\s*y\s*=\s*(\S+)\s*(.*)$/))) { it2.kind = "hline"; it2.v = val(m[1], ctx.vars); it2.label = m[2] || ""; it2.dash = true; if (it2.v !== it2.v) return E(it.line, "横线位置看不懂：" + t, "例：横线 y=0"); }
-        else if ((m = t.match(new RegExp("^线段\\s*[（(]" + NUM + "[,，]" + NUM + "[)）]\\s*[-—到]\\s*[（(]" + NUM + "[,，]" + NUM + "[)）]")))) { it2.kind = "seg"; it2.a = [num(m[1]), num(m[2])]; it2.b = [num(m[3]), num(m[4])]; }
+        else if ((m = t.match(/^(线段|多边形|阴影)\s*(.+)$/))) {
+          var vs = verts(m[2], S.items, ctx.vars), poly = m[1] !== "线段";
+          if (vs.err) return E(it.line, vs.err, poly ? "例：多边形 O-A-P-B 标 S=6（O 是原点，A、P、B 要先在上面用「点」画出来），或 多边形 (0,0)-(2,0)-(2,3)" : "例：线段 (0,0)-(2,4)，或 线段 A-B（A、B 先用「点」画出来）");
+          if (!poly && vs.pts.length !== 2) return E(it.line, "线段要两个端点：" + t, "例：线段 A-B，或 线段 (0,0)-(2,4)");
+          if (poly && vs.pts.length < 3) return E(it.line, "多边形至少要三个顶点：" + t, "例：多边形 O-A-B 标 S=3");
+          if (poly){ it2.kind = "poly"; it2.pts = vs.pts; it2.label = vs.label; } else { it2.kind = "seg"; it2.a = vs.pts[0]; it2.b = vs.pts[1]; if (vs.label) it2.label = vs.label; }
+        }
         else if ((m = t.match(new RegExp("^带\\s*" + RANGE.source)))) { it2.kind = "band"; it2.a = num(m[1]); it2.b = num(m[2]); }
         else if ((m = t.match(new RegExp("^标注\\s*[（(]" + NUM + "[,，]" + NUM + "[)）]\\s*(.+)$")))) { it2.kind = "note"; it2.x = num(m[1]); it2.y = num(m[2]); it2.text = m[3]; }
-        else return E(it.line, "函数图里看不懂这一项：" + t, "可用：曲线 y=… ｜ 点 A(1,-4) ｜ 竖线 x=1 ｜ 横线 y=0 ｜ 线段 (0,0)-(2,4) ｜ 带 1..3 ｜ 标注 (2,3) 文字");
+        else return E(it.line, "函数图里看不懂这一项：" + t, "可用：曲线 y=… ｜ 点 A(1,-4) ｜ 竖线 x=1 ｜ 横线 y=0 ｜ 线段 (0,0)-(2,4) 或 线段 A-B ｜ 多边形 O-A-P-B 标 S=6 ｜ 带 1..3 ｜ 标注 (2,3) 文字");
         S.items.push(it2);
       });
     } else if (type === "数轴") {

@@ -187,7 +187,7 @@ document.addEventListener("click", function(e){
 function fitPage(p){
   var inner = $(".page-body", p); if (!inner) return;
   inner.style.transform = ""; inner.style.transformOrigin = "top center"; inner.style.height = "";
-  var need = inner.scrollHeight, avail = 720 - 84;
+  var need = inner.scrollHeight, avail = 720 - 56;
   if (need <= avail + 1) return;
   var k = Math.max(.62, avail/need);
   inner.style.transform = "scale("+k+")";
@@ -325,9 +325,13 @@ function fitPage(p){
     zb.textContent = Z + "×";
     if (!clone) return;
     var r = pages[idx].getBoundingClientRect(), cx = box.x + box.w / 2, cy = box.y + box.h / 2;
+    // 放大窗自己不能出屏，它正下方的那块内容就够不到页面最右／最下的边；把窗口位置线性映射到整页范围，拖到头就能看到页边（09-29 老师反馈）
+    function mapc(c, lo, hi, p0, plen, half){ var span = hi - lo, t = span > 0 ? (c - lo) / span : .5; return plen > 2 * half ? p0 + half + t * (plen - 2 * half) : p0 + plen / 2; }
+    var sx = mapc(cx, 4 + box.w / 2, innerWidth - 4 - box.w / 2, r.left, r.width, box.w / (2 * Z));
+    var sy = mapc(cy, 4 + box.h / 2, innerHeight - 4 - box.h / 2, r.top, r.height, box.h / (2 * Z));
     clone.style.transform = "scale(" + (k() * Z) + ")";
-    clone.style.marginLeft = (box.w / 2 - (cx - r.left) * Z) + "px";
-    clone.style.marginTop = (box.h / 2 - (cy - r.top) * Z) + "px";
+    clone.style.marginLeft = (box.w / 2 - (sx - r.left) * Z) + "px";
+    clone.style.marginTop = (box.h / 2 - (sy - r.top) * Z) + "px";
   }
   function setOn(v){
     on = v; tgl.classList.toggle("on", on); L.classList.toggle("show", on);
