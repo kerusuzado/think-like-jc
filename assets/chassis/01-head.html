@@ -962,6 +962,16 @@ input[type=range]::-webkit-slider-thumb:active{cursor:grabbing;transform:scale(1
 .lbx-fit{position:relative;overflow:hidden}
 .lbx-fit>*{position:absolute;left:0;top:0;transform-origin:0 0}
 .lbx-fit .zoom-btn,.lbx-ph{display:none}
+.lbx-n{font-size:14px;font-weight:700;color:#fff;background:rgba(255,255,255,.14);border-radius:999px;padding:4px 12px;display:none}
+.lbx.stepping .lbx-n:not(:empty){display:inline-block}
+.lbx-x{margin-left:auto}.lbx-n+.lbx-x{margin-left:14px}.lbx.stepping .lbx-n{margin-left:auto}
+.lbx-nav{position:absolute;top:50%;z-index:3;width:56px;height:56px;margin-top:-28px;border-radius:50%;cursor:pointer;display:none;
+  font-size:34px;font-weight:700;line-height:1;font-family:inherit;color:var(--brand-deep);background:rgba(255,255,255,.88);border:1px solid rgba(var(--deep-rgb),.18);
+  box-shadow:0 6px 20px rgba(var(--deep-rgb),.18);align-items:center;justify-content:center;padding:0 0 4px;transition:all .18s}
+.lbx-nav.prev{left:18px}.lbx-nav.next{right:18px}
+.lbx.stepping .lbx-nav{display:flex}
+.lbx-nav:hover:not(:disabled){background:#fff;transform:scale(1.06)}
+.lbx-nav:disabled{opacity:.28;cursor:default}
 /* ══ 大字档（2026-09-28 老师建议）：内容区整体放大 1.25／1.5 倍，按窄一号的宽度重新排版，超出一页的上下滑 ══ */
 body.fz-1 .page:not(.cover-page) .page-body{zoom:1.25;width:1024px;min-height:531px}
 body.fz-2 .page:not(.cover-page) .page-body{zoom:1.5;width:853px;min-height:443px}

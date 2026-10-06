@@ -34,7 +34,7 @@
     s = s.replace(/\u0000(\d+)\u0000/g, function (_, n) { return tex[+n]; });
     return s;
   }
-  function plain(src) { return String(src || "").replace(/\$([^$]+)\$/g, "$1").replace(/[*=~〔〕]/g, ""); }
+  function plain(src) { return String(src || "").replace(/\$([^$]+)\$/g, "$1").replace(/==|\*\*|~~/g, "").replace(/[*〔〕]/g, ""); }
 
   var api = { inline: inline, plain: plain, texEsc: texEsc };
   if (typeof module !== "undefined") module.exports = api; else root.TLJCInline = api;

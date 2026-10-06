@@ -435,26 +435,31 @@ function fitPage(p){
 
 /* 局部放大：带 data-zoom 的元素右上角自动补一枚「⊕ 放大」，点开整屏灯箱看同一内容的放大版。
    默认克隆（图、表、静态 SVG）；data-zoom="live" 则把元素本身搬进灯箱（实验台保持可拖），关掉再搬回。
-   灯箱开着时所有按键先被它吃掉，翻页/步进不会误触发。 */
+   灯箱开着时所有按键先被它吃掉：左右键只推本页步骤，不会翻页。 */
 (function(){
   var targets = $$("[data-zoom]");
   var lbx = document.createElement("div"); lbx.className = "lbx";
   lbx.innerHTML = '<div class="lbx-panel"><div class="lbx-head"><b></b><span class="hint">Esc 或 ✕ 退出</span>' +
-    '<button class="lbx-x" aria-label="关闭">✕</button></div><div class="lbx-body"></div></div>';
+    '<span class="lbx-n"></span><button class="lbx-x" aria-label="关闭">✕</button></div><div class="lbx-body">' +
+    '<button class="lbx-nav prev" aria-label="上一步">‹</button><button class="lbx-nav next" aria-label="下一步">›</button></div></div>';
   document.body.appendChild(lbx);
   var body = $(".lbx-body", lbx), ttl = $(".lbx-head b", lbx), cur = null, ph = null;
+  var lbN = $(".lbx-n", lbx), lbPrev = $(".lbx-nav.prev", lbx), lbNext = $(".lbx-nav.next", lbx);
+  var src = null, view = null, isLive = false;   // src = 页面上的原件，view = 灯箱里的那份
   function close(){
     if (!lbx.classList.contains("on")) return;
     lbx.classList.remove("on");
     if (cur && ph){ cur.style.transform = ""; cur.style.width = cur.dataset.zw || ""; cur.style.height = cur.dataset.zh || "";
       ph.parentNode.replaceChild(cur, ph); }
-    body.innerHTML = ""; cur = null; ph = null;
+    var f = $(".lbx-fit", body); if (f) f.remove();
+    cur = null; ph = null; src = null; view = null;
   }
   function open(el){
     var live = el.dataset.zoom === "live";
     var w0 = el.offsetWidth, h0 = el.offsetHeight;
     ttl.textContent = el.dataset.title || "放大";
-    body.innerHTML = "";
+    var f0 = $(".lbx-fit", body); if (f0) f0.remove();
+    src = el; isLive = live;
     var box = document.createElement("div"); box.className = "lbx-fit";
     var node;
     if (live){ cur = el; ph = document.createElement("span"); ph.className = "lbx-ph";
@@ -463,18 +468,61 @@ function fitPage(p){
     else { node = el.cloneNode(true); node.removeAttribute("data-zoom"); node.removeAttribute("id");
       $$("[id]", node).forEach(function(x){ x.removeAttribute("id"); });
       node.style.margin = "0"; }
-    box.appendChild(node); body.appendChild(box);
+    box.appendChild(node); body.appendChild(box); view = node;
     lbx.classList.add("on");
-    var W = body.clientWidth - 48, H = body.clientHeight - 48;
+    syncSteps();          // 先定有没有左右钮，再按留给图的宽度来缩放
+    fit(w0, h0);
+  }
+  function fit(w0, h0){
+    var node = view, box = node.parentNode;
+    var W = body.clientWidth - 48 - (lbx.classList.contains("stepping") ? 120 : 0), H = body.clientHeight - 48;
+    node.style.transform = "";
     node.style.width = w0 + "px";
     // 克隆离开了原来的祖先（如讲题中 .q.solving 把题干缩成小字），在灯箱里会按正常字号重排、变高；
     // 按灯箱里的实际内容再量一次高度，否则下半截被裁（10-06 老师反馈）
-    if (!live){ node.style.height = "auto"; h0 = Math.max(h0, node.offsetHeight); }
+    if (!isLive){ node.style.height = "auto"; h0 = Math.max(h0, node.offsetHeight); }
     var k = Math.min(W / w0, H / h0);
     node.style.height = h0 + "px";
     node.style.transform = "scale(" + k + ")";
     box.style.width = Math.round(w0 * k) + "px"; box.style.height = Math.round(h0 * k) + "px";
   }
+  /* 放大着也能逐步播（10-06 老师要求）：左右钮/方向键直接推这一页的步骤，
+     页面上的原件照常变；灯箱里的克隆逐个元素抄原件的 class，高亮的渐变就在大图上演出来。
+     结构变了（如推导页整行重建）就整份重新克隆。到头不翻页——翻页会把灯箱关掉。 */
+  function driver(){ var pg = src && (src.closest(".page") || (ph && ph.closest(".page"))); return pg ? stepDrivers[pg.id] : null; }
+  function syncSteps(){
+    var d = driver();
+    lbx.classList.toggle("stepping", !!d);
+    $(".lbx-head .hint", lbx).textContent = d ? "‹ › 或方向键逐步播放 · Esc 退出" : "Esc 或 ✕ 退出";
+    if (!d) return;
+    lbPrev.disabled = d.atStart(); lbNext.disabled = d.atEnd();
+    var pg = (src.closest(".page") || ph.closest(".page")), c = pg.querySelector(".sol-n,.alg .count");
+    lbN.textContent = c && c.textContent.trim() ? c.textContent.trim() : (d.atStart() ? "按 › 开始" : "");
+  }
+  function mirror(){
+    if (isLive || !view) return;
+    var a = [src].concat($$("*", src)), b = [view].concat($$("*", view));
+    if (a.length !== b.length){
+      var w0 = src.offsetWidth, h0 = src.offsetHeight, box = view.parentNode, n = src.cloneNode(true);
+      n.removeAttribute("data-zoom"); n.removeAttribute("id"); $$("[id]", n).forEach(function(x){ x.removeAttribute("id"); });
+      n.style.margin = "0"; box.replaceChild(n, view); view = n; fit(w0, h0); return;
+    }
+    for (var i = 0; i < a.length; i++){
+      var ca = a[i].getAttribute("class"), cb = b[i].getAttribute("class");
+      if (i && ca !== cb){ if (ca == null) b[i].removeAttribute("class"); else b[i].setAttribute("class", ca); }
+      if (!a[i].children.length && b[i].textContent !== a[i].textContent) b[i].textContent = a[i].textContent;
+    }
+    view.setAttribute("class", src.getAttribute("class") || "");
+    fit(src.offsetWidth, src.offsetHeight);
+  }
+  function step(n){
+    var d = driver(); if (!d) return;
+    if (n > 0 ? d.atEnd() : d.atStart()) return;
+    n > 0 ? d.next() : d.prev();
+    syncNav(); mirror(); syncSteps();
+  }
+  lbPrev.addEventListener("click", function(e){ e.stopPropagation(); step(-1); });
+  lbNext.addEventListener("click", function(e){ e.stopPropagation(); step(1); });
   targets.forEach(function(el){
     var b = document.createElement("button"); b.type = "button"; b.className = "zoom-btn";
     b.innerHTML = '<span aria-hidden="true">⊕</span>放大'; b.title = "放大看清楚";
@@ -487,6 +535,8 @@ function fitPage(p){
   document.addEventListener("keydown", function(e){
     if (!lbx.classList.contains("on")) return;
     if (e.key === "Escape") close();
+    else if (e.key === "ArrowRight" || e.key === " " || e.key === "PageDown") step(1);
+    else if (e.key === "ArrowLeft" || e.key === "PageUp") step(-1);
     e.stopImmediatePropagation(); e.preventDefault();
   }, true);
   labs.push(function(){ if (lbx.classList.contains("on")) close(); });   // 翻页/重绘时顺手关掉
