@@ -25,7 +25,7 @@
     if ((scene === "讲评课" || scene === "成绩分析") && !M) errors.push({ line: null, msg: scene + "需要成绩表", fix: "在装配台上传成绩表（Excel 或 CSV），格式见说明" });
     var out;
     if (scene === "成绩分析" && M && !M.errors.length) out = RP.render(doc, M, brand);
-    else out = PG.render(doc, { brand: brand, R: R, fill: R ? function (s) { return R.fillErr(s, function (line, msg, fix) { errors.push({ line: line, msg: msg, fix: fix }); }); } : null });
+    else out = PG.render(doc, { brand: brand, R: R, strict: !!env.strict, fill: R ? function (s) { return R.fillErr(s, function (line, msg, fix) { errors.push({ line: line, msg: msg, fix: fix }); }); } : null });
     errors = errors.concat(out.errors); warnings = warnings.concat(out.warnings);
     var packs = scene === "成绩分析" ? ["report"] : ["fig", "review"]; if (scene === "微论坛") packs.push("forum"); if (/数学/.test(out.meta.学科 || "")) packs.unshift("math");
     if (/化学/.test(out.meta.学科 || "")) packs.push("chem"); if (/物理/.test(out.meta.学科 || "")) packs.push("physics"); if (/历史/.test(out.meta.学科 || "")) packs.push("history"); if (/英语/.test(out.meta.学科 || "")) packs.push("english");

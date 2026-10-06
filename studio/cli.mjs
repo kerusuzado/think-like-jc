@@ -11,7 +11,7 @@ const RES = require("./src/resources.node.js"), ENG = require("./src/engine.js")
 const katex = require(require.resolve("katex", { paths: [RES.ROOT] }));
 
 const a = process.argv.slice(2), opt = { _: [] };
-for (let i = 0; i < a.length; i++) { const k = a[i]; if (k === "-o") opt.o = a[++i]; else if (k.startsWith("--")) { const n = k.slice(2); if (n === "no-names") opt.noNames = true; else opt[n] = a[++i]; } else opt._.push(k); }
+for (let i = 0; i < a.length; i++) { const k = a[i]; if (k === "-o") opt.o = a[++i]; else if (k.startsWith("--")) { const n = k.slice(2); if (n === "no-names") opt.noNames = true; else if (n === "strict") opt.strict = true; else opt[n] = a[++i]; } else opt._.push(k); }
 if (!opt._[0]) { console.error("用法：node studio/cli.mjs 课件稿.txt -o 输出.html [--brand 目录] [--scores 目录] [--assets 目录]"); process.exit(2); }
 
 function table(dir, k) {
@@ -21,7 +21,7 @@ function table(dir, k) {
   return null;
 }
 const R = RES.load({ brandDir: opt.brand });
-const env = { R, katex, brand: null, assets: {}, names: !opt.noNames };
+const env = { R, katex, brand: null, assets: {}, names: !opt.noNames, strict: !!opt.strict };
 if (opt.scores) { env.tables = {}; for (const k of "ABCDE") { const t = table(opt.scores, k); if (t) env.tables[k] = t; } }
 if (opt.assets) for (const f of fs.readdirSync(opt.assets)) if (/\.(png|jpe?g|svg|webp)$/i.test(f)) env.assets[f] = RES.dataUri(path.join(opt.assets, f));
 

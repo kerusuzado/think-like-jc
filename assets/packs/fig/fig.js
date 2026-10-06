@@ -51,6 +51,7 @@ var FG = (function(){
     /* 刻度太密（不等比、范围大）时，各轴单独放大步长：1 → 2 → 5 → 10…，刻度字之间至少留 20px */
     function up(s, u, min){ var seq = [1, 2, 2.5, 5]; for (var e = 0; s * u < min && e < 40; e++){ var p = Math.pow(10, Math.floor(Math.log10(s) + 1e-9)), m = s / p, i = seq.findIndex(function(v){ return v > m + 1e-9; }); s = i < 0 ? 10 * p : seq[i] * p; } return s; }
     var stx = up(st, ux, 9), sty = up(st, uy, 9);
+    if (!S.geo){                               // 几何图：没有网格、坐标轴、刻度，只画图形
     for (var gx = Math.ceil(x0 / stx) * stx; gx <= x1; gx += stx) el("line", {x1:X(gx), y1:Y(y0), x2:X(gx), y2:Y(y1), stroke:C.grid, "stroke-width":1}, L.base);
     for (var gy = Math.ceil(y0 / sty) * sty; gy <= y1; gy += sty) el("line", {x1:X(x0), y1:Y(gy), x2:X(x1), y2:Y(gy), stroke:C.grid, "stroke-width":1}, L.base);
     el("line", {x1:X(x0), y1:Y(0), x2:X(x1) + 6, y2:Y(0), stroke:C.axis, "stroke-width":1.6}, L.base); arrowHead(L.base, X(x1) + 12, Y(0), 0, C.axis, 8);
@@ -60,12 +61,13 @@ var FG = (function(){
     var ts = up(S.tick || st, ux, 22), tsy = up(S.tick || st, uy, 20);
     for (var tx = Math.ceil(x0 / ts) * ts; tx <= x1 - ts/2; tx += ts) if (Math.abs(tx) > 1e-9){ el("line", {x1:X(tx), y1:Y(0) - 3, x2:X(tx), y2:Y(0) + 3, stroke:C.axis}, L.base); if (!near("vline", tx)) T(L.base, X(tx), Y(0) + 14, fmt(tx), {s:11.5, c:C.sub, w:400}); }
     for (var ty = Math.ceil(y0 / tsy) * tsy; ty <= y1 - tsy/2; ty += tsy) if (Math.abs(ty) > 1e-9){ el("line", {x1:X(0) - 3, y1:Y(ty), x2:X(0) + 3, y2:Y(ty), stroke:C.axis}, L.base); if (!near("hline", ty)) T(L.base, X(0) - 12, Y(ty), fmt(ty), {s:11.5, c:C.sub, w:400, a:"end"}); }
+    }
     var clip = "fgc" + Math.random().toString(36).slice(2, 7);
     var defs = el("defs", {}, svg); var cp = el("clipPath", {id:clip}, defs); el("rect", {x:pad - 4, y:pad - 4, width:W - 2*pad + 8, height:H - 2*pad + 8}, cp);
     var ci = 0, PTS = [], placed = [];
     S.items.forEach(function(it){ if (it.kind !== "curve") return; var g = new Function("x", "return " + it.js), a = it.from != null ? it.from : x0, b = it.to != null ? it.to : x1;
       for (var k = 0; k <= 60; k++){ var xx = a + (b - a) * k / 60, yy = g(xx); if (isFinite(yy)) PTS.push([X(xx), Y(yy)]); } });
-    for (var ax = 0; ax <= 40; ax++){ PTS.push([X(x0 + (x1 - x0) * ax / 40), Y(0) + 8]); PTS.push([X(0) - 12, Y(y0 + (y1 - y0) * ax / 40)]); }   // 坐标轴和刻度字也算障碍
+    if (!S.geo) for (var ax = 0; ax <= 40; ax++){ PTS.push([X(x0 + (x1 - x0) * ax / 40), Y(0) + 8]); PTS.push([X(0) - 12, Y(y0 + (y1 - y0) * ax / 40)]); }   // 坐标轴和刻度字也算障碍
     S.items.forEach(function(it){ if (it.kind === "point" && typeof it.x === "number"){ PTS.push([X(it.x), Y(it.y)]); if (it.coord || it.name) for (var q = 0; q <= 6; q++) PTS.push([X(it.x) + (X(it.x) > W * .72 && !it.dx ? -10 - q * 12 : 10 + q * 12), Y(it.y) - 16]); }
       if (it.kind === "vline" && typeof it.v === "number") for (var q2 = 0; q2 <= 20; q2++) PTS.push([X(it.v), Y(y0 + (y1 - y0) * q2 / 20)]);
       if (it.kind === "hline" && typeof it.v === "number") for (var q3 = 0; q3 <= 20; q3++) PTS.push([X(x0 + (x1 - x0) * q3 / 20), Y(it.v)]); });
@@ -79,8 +81,11 @@ var FG = (function(){
         if (!best || sc > bd + 4){ bd = sc; best = q; best.inn = inn; } });
       placed.push(best); return best;
     }
-    S.items.slice().sort(function(a, b){ return (b.kind === "poly") - (a.kind === "poly"); }).forEach(function(it){
+    var gcC = null; function geoC(){ if (gcC) return gcC; var sx = 0, sy = 0, k2 = 0; S.items.forEach(function(q){ if (q.kind === "point" && typeof q.x === "number"){ sx += q.x; sy += q.y; k2++; }
+      if (q.kind === "sector"){ var ma = (q.a0 + q.a1) / 2 * Math.PI / 180; sx += q.c[0] + q.r * .6 * Math.cos(ma); sy += q.c[1] + q.r * .6 * Math.sin(ma); k2++; } }); return (gcC = k2 ? [sx / k2, sy / k2] : [0, 0]); }
+    S.items.slice().sort(function(a, b){ return (b.kind === "poly" || b.kind === "sector") - (a.kind === "poly" || a.kind === "sector"); }).forEach(function(it){
       var G = grp(L, it), c = col(it.color, it.kind === "curve" ? ci++ : 2), n;
+      if (S.geo && !it.color && (it.kind === "seg" || it.kind === "point")) c = C.ink;   // 几何图：线和点默认黑色，颜色留给要强调的
       if (it.kind === "curve"){
         var f = new Function("x", "return " + it.js), d = "", pen = false, xa = it.from != null ? it.from : x0, xb = it.to != null ? it.to : x1;
         for (var k = 0; k <= 240; k++){ var x = xa + (xb - xa) * k / 240, y = f(x); if (!isFinite(y) || y < y0 - 50 || y > y1 + 50){ pen = false; continue; } d += (pen ? "L" : "M") + X(x).toFixed(1) + " " + Y(y).toFixed(1); pen = true; }
@@ -90,7 +95,13 @@ var FG = (function(){
           if (cap){ placed.pop(); if (!cap.querySelector('[data-leg="' + ci + '"]')) cap.insertAdjacentHTML("afterbegin", '<span class="fg-leg" data-leg="' + ci + '"><i style="background:' + c + '"></i>' + KX(it.label) + "</span>"); }   // 图里挤不下：曲线名放到图注里当图例
           else rvl(it, ovl(ov, [W, H], q[0], q[1], KX(it.label), "fg-lbl")); } }
       } else if (it.kind === "point"){
-        n = el("circle", {cx:X(it.x), cy:Y(it.y), r:4.8, fill:it.hollow ? "#fff" : c, stroke:c, "stroke-width":2}, G.g);
+        n = el("circle", {cx:X(it.x), cy:Y(it.y), r:S.geo ? 3.4 : 4.8, fill:it.hollow ? "#fff" : c, stroke:c, "stroke-width":2}, G.g);
+        if (S.geo && !it.dx && !it.dy && it.name && !it.coord){   // 几何图：点名朝「离图形中心远」的方向放，不压线
+          var gc = geoC(), vx = it.x - gc[0], vy = it.y - gc[1], vl = Math.hypot(vx, vy) || 1;
+          if (vl < 1e-6){ vx = -1; vy = -1; vl = Math.SQRT2; }
+          T(G.g, X(it.x) + vx / vl * 15, Y(it.y) - vy / vl * 15, it.name, {i:/^[A-Za-z][0-9\u2080-\u2089]*'?$/.test(it.name), s:15, w:700});
+          halo(G.halo, n); return;
+        }
         var rt = X(it.x) > W * .72 && !it.dx;      // 靠右边的点：字放到点的左边，免得出图框
         var ly = Y(it.y) + (it.dy || -12), cy = Y(it.y) - 16;
         if (!it.dy && ly > Y(0) - 10 && ly < Y(0) + 22) ly = Y(it.y) + 15;      // 字会压在 x 轴上：挪到点的下方
@@ -109,6 +120,24 @@ var FG = (function(){
         var pc = it.color ? c : C.c[3], dd = it.pts.map(function(p, i){ return (i ? "L" : "M") + X(p[0]).toFixed(1) + " " + Y(p[1]).toFixed(1); }).join("") + "Z";
         n = el("path", {d:dd, fill:pc, "fill-opacity":.22, stroke:pc, "stroke-width":1.8, "stroke-dasharray":it.dash ? "6 5" : "", "stroke-linejoin":"round"}, G.g);
         if (it.label){ var gx2 = 0, gy2 = 0; it.pts.forEach(function(p){ gx2 += X(p[0]); gy2 += Y(p[1]); }); T(G.g, gx2 / it.pts.length, gy2 / it.pts.length, it.label, {s:14, c:C.ink, w:700}); }
+      } else if (it.kind === "circle"){
+        n = el("circle", {cx:X(it.c[0]), cy:Y(it.c[1]), r:it.r * ux, fill:"none", stroke:it.color ? c : C.ink, "stroke-width":2.2, "stroke-dasharray":it.dash ? "6 5" : ""}, G.g);
+      } else if (it.kind === "sector"){
+        var r0 = it.r * ux, a0 = it.a0 * Math.PI / 180, a1 = it.a1 * Math.PI / 180, big = Math.abs(it.a1 - it.a0) > 180 ? 1 : 0, sp = it.color ? c : C.c[3];
+        n = el("path", {d:"M" + X(it.c[0]) + " " + Y(it.c[1]) + "L" + (X(it.c[0]) + r0 * Math.cos(a0)) + " " + (Y(it.c[1]) - r0 * Math.sin(a0)) +
+          "A" + r0 + " " + r0 + " 0 " + big + " " + (it.a1 > it.a0 ? 0 : 1) + " " + (X(it.c[0]) + r0 * Math.cos(a1)) + " " + (Y(it.c[1]) - r0 * Math.sin(a1)) + "Z",
+          fill:sp, "fill-opacity":.22, stroke:sp, "stroke-width":1.8}, G.g);
+        if (it.label){ var am = (a0 + a1) / 2; T(G.g, X(it.c[0]) + r0 * .55 * Math.cos(am), Y(it.c[1]) - r0 * .55 * Math.sin(am), it.label, {s:14, w:700}); }
+      } else if (it.kind === "angle" || it.kind === "rangle"){
+        var P = it.pts.map(function(p){ return [X(p[0]), Y(p[1])]; }), B = P[1];
+        var u1 = [P[0][0] - B[0], P[0][1] - B[1]], u2 = [P[2][0] - B[0], P[2][1] - B[1]], l1 = Math.hypot(u1[0], u1[1]) || 1, l2 = Math.hypot(u2[0], u2[1]) || 1;
+        u1 = [u1[0] / l1, u1[1] / l1]; u2 = [u2[0] / l2, u2[1] / l2];
+        var ac = it.color ? c : C.c[2];
+        if (it.kind === "rangle"){ var q1 = 11;
+          n = el("path", {d:"M" + (B[0] + u1[0] * q1) + " " + (B[1] + u1[1] * q1) + "L" + (B[0] + (u1[0] + u2[0]) * q1) + " " + (B[1] + (u1[1] + u2[1]) * q1) + "L" + (B[0] + u2[0] * q1) + " " + (B[1] + u2[1] * q1), fill:"none", stroke:ac, "stroke-width":1.8}, G.g);
+        } else { var ra = 20, sw = (u1[0] * u2[1] - u1[1] * u2[0]) > 0 ? 1 : 0;
+          n = el("path", {d:"M" + (B[0] + u1[0] * ra) + " " + (B[1] + u1[1] * ra) + "A" + ra + " " + ra + " 0 0 " + sw + " " + (B[0] + u2[0] * ra) + " " + (B[1] + u2[1] * ra), fill:"none", stroke:ac, "stroke-width":2}, G.g); }
+        if (it.label){ var bx2 = u1[0] + u2[0], by2 = u1[1] + u2[1], bl = Math.hypot(bx2, by2) || 1; T(G.g, B[0] + bx2 / bl * 34, B[1] + by2 / bl * 34, it.label, {s:14, c:ac, w:700, i:/^[A-Za-zα-ω]$/.test(it.label)}); }
       } else if (it.kind === "band"){
         n = el("rect", {x:X(it.a), y:pad, width:X(it.b) - X(it.a), height:H - 2*pad, fill:c, opacity:.13}, G.g);
       } else if (it.kind === "note"){

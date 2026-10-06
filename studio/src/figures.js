@@ -109,10 +109,11 @@
       return { html: '<figure class="q-fig" data-zoom data-title="原图"><div class="figwrap"><img src="__ASSET:' + file + '__" alt="">' + boxes + "</div>" + capHtml + "</figure>", js: "", errors: errs, assets: [file] };
     }
 
-    if (type === "函数" || type === "坐标") {
-      S.type = "fn";
+    if (type === "函数" || type === "坐标" || type === "几何") {
+      S.type = "fn"; if (type === "几何") { S.geo = true; S.equal = true; }
       var mx = head.match(new RegExp("x\\s*" + RANGE.source)), my = head.match(new RegExp("y\\s*" + RANGE.source)), mg = head.match(/格\s*(\d+(?:\.\d+)?)/);
       S.xr = mx ? [num(mx[1]), num(mx[2])] : [-5, 5]; S.yr = my ? [num(my[1]), num(my[2])] : [-5, 5]; if (mg) S.step = S.tick = num(mg[1]);
+      S.auto = S.geo && !mx && !my;          // 几何图不写范围：画完按所有点、圆自动框
       if (/不等比|拉伸/.test(head)) S.equal = false;
       var hx = head.match(/横轴\s*(\S+)/), hy = head.match(/纵轴\s*(\S+)/); if (hx) S.xl = hx[1]; if (hy) S.yl = hy[1];
       items.forEach(function (it) {
@@ -137,9 +138,35 @@
         }
         else if ((m = t.match(new RegExp("^带\\s*" + RANGE.source)))) { it2.kind = "band"; it2.a = num(m[1]); it2.b = num(m[2]); }
         else if ((m = t.match(new RegExp("^标注\\s*[（(]" + NUM + "[,，]" + NUM + "[)）]\\s*(.+)$")))) { it2.kind = "note"; it2.x = num(m[1]); it2.y = num(m[2]); it2.text = m[3]; }
-        else return E(it.line, "函数图里看不懂这一项：" + t, "可用：曲线 y=… ｜ 点 A(1,-4) ｜ 竖线 x=1 ｜ 横线 y=0 ｜ 线段 (0,0)-(2,4) 或 线段 A-B ｜ 多边形 O-A-P-B 标 S=6 ｜ 带 1..3 ｜ 标注 (2,3) 文字");
+        else if (S.geo && (m = t.match(/^圆\s*(\S+?)\s*(?:半径\s*(\S+)|过\s*(\S+))\s*$/))) {
+          var cc = verts(m[1], S.items, ctx.vars); if (cc.err || cc.pts.length !== 1) return E(it.line, "圆心看不懂：" + t, "例：圆 O 半径 5（O 先用「点 O(0,0)」画出来），或 圆 (2,1) 半径 3，或 圆 O 过 A");
+          it2.kind = "circle"; it2.c = cc.pts[0];
+          if (m[2]) it2.r = val(m[2], ctx.vars); else { var pa = verts(m[3], S.items, ctx.vars); if (pa.err) return E(it.line, pa.err); it2.r = Math.hypot(pa.pts[0][0] - it2.c[0], pa.pts[0][1] - it2.c[1]); }
+          if (!(it2.r > 0)) return E(it.line, "圆的半径要是正数：" + t, "例：圆 O 半径 5");
+        }
+        else if (S.geo && (m = t.match(new RegExp("^扇形\\s*(\\S+?)\\s*半径\\s*(\\S+)\\s*从\\s*" + NUM + "\\s*到\\s*" + NUM + "\\s*(?:标\\s*(.+))?$")))) {
+          var sc = verts(m[1], S.items, ctx.vars); if (sc.err || sc.pts.length !== 1) return E(it.line, "扇形的圆心看不懂：" + t, "例：扇形 O 半径 3 从 0 到 120 标 S（角度从向右开始，逆时针量）");
+          it2.kind = "sector"; it2.c = sc.pts[0]; it2.r = val(m[2], ctx.vars); it2.a0 = num(m[3]); it2.a1 = num(m[4]); it2.label = m[5] || "";
+          if (!(it2.r > 0)) return E(it.line, "扇形的半径要是正数：" + t);
+        }
+        else if (S.geo && (m = t.match(/^(直角|角)\s*(.+?)\s*(?:标\s*(.+))?$/))) {
+          var av = verts(m[2], S.items, ctx.vars);
+          if (av.err || av.pts.length !== 3) return E(it.line, (av.err || "角要写三个点") + "：" + t, "例：角 A-B-C 标 α（B 是顶点），直角 O-M-A（M 是直角顶点）；三个点都要先用「点」画出来");
+          it2.kind = m[1] === "直角" ? "rangle" : "angle"; it2.pts = av.pts; it2.label = m[3] || av.label || "";
+        }
+        else return E(it.line, (S.geo ? "几何图" : "函数图") + "里看不懂这一项：" + t, S.geo ? "可用：点 A(0,0) ｜ 线段 A-B ｜ 多边形 A-B-C ｜ 圆 O 半径 5 ｜ 圆 O 过 A ｜ 扇形 O 半径 3 从 0 到 120 ｜ 角 A-B-C 标 α ｜ 直角 A-B-C ｜ 标注 (2,3) 文字" : "可用：曲线 y=… ｜ 点 A(1,-4) ｜ 竖线 x=1 ｜ 横线 y=0 ｜ 线段 (0,0)-(2,4) 或 线段 A-B ｜ 多边形 O-A-P-B 标 S=6 ｜ 带 1..3 ｜ 标注 (2,3) 文字");
         S.items.push(it2);
       });
+      if (S.auto) {
+        var bx = [], by = [];
+        S.items.forEach(function (q) {
+          if (q.kind === "point" && typeof q.x === "number") { bx.push(q.x); by.push(q.y); }
+          if ((q.kind === "circle" || q.kind === "sector") && typeof q.r === "number") { bx.push(q.c[0] - q.r, q.c[0] + q.r); by.push(q.c[1] - q.r, q.c[1] + q.r); }
+          (q.pts || []).concat(q.a && q.a.length ? [q.a, q.b] : []).forEach(function (p) { if (typeof p[0] === "number") { bx.push(p[0]); by.push(p[1]); } });
+        });
+        if (bx.length) { var mxx = Math.max.apply(null, bx), mnx = Math.min.apply(null, bx), mxy = Math.max.apply(null, by), mny = Math.min.apply(null, by), pd = Math.max(mxx - mnx, mxy - mny, 1) * .12;
+          S.xr = [mnx - pd, mxx + pd]; S.yr = [mny - pd, mxy + pd]; }
+      }
     } else if (type === "数轴") {
       S.type = "line"; S.H = 150; m = head.match(RANGE); S.xr = m ? [num(m[1]), num(m[2])] : [-5, 5]; var g1 = head.match(/格\s*(\d+(?:\.\d+)?)/); if (g1) S.step = num(g1[1]);
       items.forEach(function (it) {
@@ -192,7 +219,7 @@
       S.type = "flow"; S.H = 140; items.forEach(function (it) { var o = opts(it.text); S.items.push({ key: o.key, reveal: o.reveal, color: o.color, label: o.rest }); });
       if (items.length > 5) E(field.line, "流程最多 5 个节点（现在 " + items.length + " 个）", "拆成两张图，或合并步骤");
     } else {
-      E(field.line, "没有「" + type + "」这种图", "可用：函数 数轴 线段 柱状 折线 年代轴 流程 表格 原图 原文");
+      E(field.line, "没有「" + type + "」这种图", "可用：函数 几何 数轴 线段 柱状 折线 年代轴 流程 表格 原图 原文");
       return { html: "", js: "", errors: errs };
     }
     var html = '<figure class="q-fig jp-fig fg-fig" data-zoom data-title="' + (IL.plain(cap) || "图").slice(0, 20) + '"><div class="figwrap">' +

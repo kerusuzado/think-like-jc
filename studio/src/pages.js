@@ -71,6 +71,41 @@
   function grams(t) {                      // 题干去掉空格、$、\tfrac 之类后的两字片段，用来认出同一道题
     var c = (t || "").replace(/\\[a-z]+|[\s$（）()，,。.、；;：:{}_^]/g, ""), g = {}; for (var i = 0; i < c.length - 1; i++) g[c.substr(i, 2)] = 1; return g;
   }
+  /* 验算：「算式 = 结果」「当 k=-12, x=-1：k/x = 12」「-1/2 > -1」→ 真算一遍（弱模型最常错在算数） */
+  function calc(src, env) {
+    var names = Object.keys(env).filter(function (k) { return k !== "x"; });
+    var r = FGB.expr("y=" + String(src).replace(/(\d)\s*([A-Za-z(])/g, "$1*$2").replace(/\)\s*([A-Za-z\d])/g, ")*$1"), names); if (r.err) return NaN;
+    try { return new Function(["x"].concat(names).join(","), "return " + r.js).apply(null, [env.x || 0].concat(names.map(function (k) { return env[k]; }))); } catch (e) { return NaN; }
+  }
+  function verify(line, ctx) {
+    var t = String(line.text).replace(/\$/g, "").replace(/[−–]/g, "-").replace(/\\(le|leqslant)/g, "≤").replace(/\\(ge|geqslant)/g, "≥").trim(), env = {}, m;
+    if ((m = t.match(/^当\s*(.+?)\s*[：:]\s*(.+)$/))) {
+      var bad = false;
+      m[1].split(/[,，;；]\s*/).forEach(function (a) { var q = a.match(/^\s*([A-Za-z]\w*)\s*=\s*(.+?)\s*$/); if (!q) { bad = true; return; } env[q[1]] = calc(q[2], env); if (env[q[1]] !== env[q[1]]) bad = true; });
+      if (bad) return ctx.err(line.line, "验算里「当 …：」的赋值看不懂：" + line.text, "写成「当 k=-12, x=-1：k/x = 12」，字母用英文，值写数字或算式");
+      t = m[2];
+    }
+    var op = t.match(/^(.+?)\s*(=|≈|>=|<=|≥|≤|>|<|≠)\s*([^=<>≥≤≈≠]+)$/);
+    if (!op) return ctx.err(line.line, "验算要写成「算式 = 结果」或「a > b」：" + line.text, "例：-12/(-3) = 4；当 x=2：-6/x = -3；-1/2 > -1");
+    var L = calc(op[1], env), R = calc(op[3], env);
+    if (L !== L || R !== R || !isFinite(L) || !isFinite(R)) return ctx.err(line.line, "验算这一行算不出来：" + line.text, "只能用数字、已赋值的字母、+ - * / ^ ( )、sqrt()、abs()、pi；分数写 a/b");
+    var e = 1e-6 * Math.max(1, Math.abs(L), Math.abs(R)), ok = { "=": Math.abs(L - R) <= e, "≈": Math.abs(L - R) <= .01 * Math.max(1, Math.abs(R)), ">": L > R + e, "<": L < R - e, ">=": L >= R - e, "≥": L >= R - e, "<=": L <= R + e, "≤": L <= R + e, "≠": Math.abs(L - R) > e }[op[2]];
+    if (!ok) ctx.err(line.line, "验算不成立：" + line.text + "（左边算出来是 " + (Math.round(L * 1e6) / 1e6) + "，右边是 " + (Math.round(R * 1e6) / 1e6) + "）", "重新算这道题；如果答案错了，题干的答案、步骤、图都要一起改");
+  }
+  var GENERIC_TITLE = /^\s*(例题?\s*\d*|练习\s*\d*|练一练|巩固(提升|练习)?|典例(精析)?|知识点(讲解)?|课堂练习|随堂(练习|检测)|拓展(提升)?|变式(训练)?\s*\d*)\s*[:：]?\s*$/;
+  var EMPTY_STUCK = /计算量大|综合性强|基础(差|薄弱)|理解题意|审题不清|粗心|知识点(多|综合)|难度(大|较大)|不会做/;
+  function intent(p, ctx, o, steps) {
+    var need = steps.length > 0, warn = ctx.strict ? ctx.err : ctx.warn, ti = f(p, "标题");
+    if (GENERIC_TITLE.test(ti.replace(/^(真题|课本原题)\s*[:：]\s*/, "")) || /^(练一练|练习\s*\d*|例\s*\d+)\s*[:：]/.test(ti)) warn(lineOf(p, "标题"), "标题「" + ti + "」没说出这道题的破题方法", "把「意图:」里的破题那句话当标题，例：「横着切一刀，范围就出来」「谁在上面，谁就大」");
+    if (!need) return;
+    var it = f(p, "意图"), c = cells(it);
+    if (!it) warn(p.line, "这道题没写「意图:」", "在题干上面加一行「意图: 卡点 | 破题 | 常错」，写法见《读题与画面》第一节");
+    else if (c.length < 3 || c.some(function (x) { return !x.trim(); })) warn(lineOf(p, "意图"), "「意图:」要写三段：卡点 | 破题 | 常错", "例：意图: 把「比 y」翻译成「比点的高低」 | 先分组：负的一组，正的一组 | 三个点一起套「减小」");
+    else if (EMPTY_STUCK.test(c[0])) warn(lineOf(p, "意图"), "卡点写空了：「" + c[0] + "」对哪道题都成立", "写成「把 A 翻译成 B」：学生读完题到会动笔之间，缺的那一步转化是什么");
+    var last = steps.filter(function (s) { return /==答案==/.test(s.text); }).pop(), ver = items(p, "验算");
+    ver.forEach(function (v) { verify(v, ctx); });
+    if (last && /\d/.test(last.text.split("==答案==")[1] || "") && !/^\s*[A-D][\s。.]*$/.test(IL.plain(last.text.split("==答案==")[1])) && !ver.length) warn(lineOf(p, "步骤"), "答案里有数，但这一页没有「验算:」", "加「验算:」列表，把答案里每个数写成算式让装配台算一遍，例：- -12/(-3) = 4");
+  }
   function question(p, ctx, o) {
     var tcols = /^表格/.test(f(p, "图")) ? Math.max.apply(0, items(p, "图").map(function (i) { return cells(i.text).length; }).concat([0])) : 0;
     var used = {}, wide = /是|宽/.test(f(p, "宽图")) || /^原文/.test(f(p, "图")) || tcols >= 3;       // 三列以上的表放宽栏，免得一字一行
@@ -90,6 +125,7 @@
     if (tm) { ctx.timers += tm[0] * 60 + tm[1]; ctx.timerList.push({ line: lineOf(p, "计时"), sec: tm[0] * 60 + tm[1] }); }
     var li = stepsHtml(steps, ctx, used);
     checkKeys(ctx, used, fig);
+    intent(p, ctx, o, steps);
     nums(f(p, "原题")).forEach(function (k) { ctx.srcUsed[k] = 1; });
     if (f(p, "题干")) ctx.stems.push({ line: lineOf(p, "题干"), no: f(p, "题号") || "", g: grams(f(p, "题干")), src: nums(f(p, "原题")) });
     // 弱模型常犯：题干没给选项，答案却写「选 C」（选项字母是编的）
@@ -140,8 +176,8 @@
       return '<div class="dec">' + items(p, "问答").map(function (it, i) { var c = cells(it.text.replace(/\s*(→|=>)\s*/, "|"));
         return '<div class="dec-row"><div class="dec-q">' + T(c[0], ctx) + '</div><div class="dec-a a' + (i % 4 + 1) + '">' + T(c[1] || "", ctx) + '</div><div class="dec-note">' + T(c[2] || "", ctx) + "</div></div>"; }).join("") +
         "</div>" + (f(p, "收束") ? '<div class="dec-tip">' + T(f(p, "收束"), ctx) + "</div>" : ""); } },
-    "例题": { scenes: "新授课 专题课", keys: ["标题", "题号", "标签", "提示", "题干", "步骤", "图", "图注", "侧栏", "计时", "变式", "出处", "做笔记", "页底", "宽图", "原题"], render: function (p, ctx) { return question(p, ctx, { no: "例", tag: "例题", timeOk: true }); } },
-    "练习": { scenes: "新授课 专题课", keys: ["标题", "题号", "标签", "提示", "题干", "步骤", "图", "图注", "侧栏", "计时", "出处", "做笔记", "提示条", "宽图", "变式", "原题"], render: function (p, ctx) { return question(p, ctx, { timed: true, no: "练习", tag: "练习" }); } },
+    "例题": { scenes: "新授课 专题课", keys: ["意图", "验算", "标题", "题号", "标签", "提示", "题干", "步骤", "图", "图注", "侧栏", "计时", "变式", "出处", "做笔记", "页底", "宽图", "原题"], render: function (p, ctx) { return question(p, ctx, { no: "例", tag: "例题", timeOk: true }); } },
+    "练习": { scenes: "新授课 专题课", keys: ["意图", "验算", "标题", "题号", "标签", "提示", "题干", "步骤", "图", "图注", "侧栏", "计时", "出处", "做笔记", "提示条", "宽图", "变式", "原题"], render: function (p, ctx) { return question(p, ctx, { timed: true, no: "练习", tag: "练习" }); } },
     "推导": { scenes: "新授课 专题课 微论坛", keys: ["标题", "题号", "题干", "推导标题", "依据", "推导", "结论", "技巧", "高度"], render: function (p, ctx) {
       var rows = DV.rowsOf(items(p, "推导")); if (rows.length < 2) ctx.err(lineOf(p, "推导"), "推导至少写两行式子", "每行「- 式子 | 这一步做了什么」");
       var id = "dv" + ctx.pid.replace(/\W/g, ""), D = DV.build(T(f(p, "推导标题") || "推导", ctx), f(p, "依据") ? "依据：" + T(f(p, "依据"), ctx) : "", rows);
@@ -205,7 +241,7 @@
         return { k: k, stem: f(p, "题干" + i), opts: (p.f["选项" + i] ? (p.f["选项" + i].items.length ? p.f["选项" + i].items.map(function (x) { return x.text; }) : f(p, "选项" + i).split(/\s*[；;]\s*|\s{2,}/)) : []), think: f(p, "思路" + i), key: f(p, "关键" + i), err: f(p, "易错" + i) }; });
       if (!cards.length || cards.length > 4) ctx.err(p.line, "速查卡一页 1–4 张（现在 " + cards.length + " 张）", "题1: 3，下面 题干1 / 选项1 / 思路1 / 关键1 / 易错1");
       return ctx.R.quick(cards, ctx); } },
-    "讲题": { scenes: "讲评课", keys: ["标题", "题号", "小问", "提示", "题干", "步骤", "图", "图注", "侧栏", "宽图", "出处"], render: function (p, ctx) {
+    "讲题": { scenes: "讲评课", keys: ["意图", "验算", "标题", "题号", "小问", "提示", "题干", "步骤", "图", "图注", "侧栏", "宽图", "出处"], render: function (p, ctx) {
       if (!f(p, "小问")) ctx.err(p.line, "讲题页要写这页讲哪几个小问（得分率、名单都靠它）", "小问: 13(1)① | 13(1)②（和成绩表表头一模一样）");
       return question(p, ctx, { review: true, no: "第 " + f(p, "小问") + " 题", tag: "讲评" }); } },
     "错因": { scenes: "讲评课", keys: ["标题", "条目", "记住"], render: function (p, ctx) {
@@ -254,7 +290,7 @@
       refs.forEach(function (r) { var m = r.text.match(/^\s*\[(\d+)\]/); if (!m) ctx.err(r.line, "文献要带编号 [n]，全课连续", "- [3] 作者.(年). 篇名. 刊名, (期), 页. | 本课课例"); else ctx.refs.push(+m[1]); });
       return '<ol class="mf-advice">' + adv.map(function (a) { return "<li>" + T(a.text, ctx) + "</li>"; }).join("") + "</ol>" +
         (refs.length ? '<div class="mf-refs clear-chrome">' + refs.map(function (r) { var c = cells(r.text); return '<div class="r">' + T(c[0], ctx) + (c[1] ? ' <span class="why">— ' + T(c[1], ctx) + "</span>" : "") + "</div>"; }).join("") + "</div>" : ""); } },
-    "精选": { scenes: "微论坛", keys: ["标题", "题号", "出处", "层次", "题干", "步骤", "图", "图注", "侧栏", "计时", "宽图"], render: function (p, ctx) {
+    "精选": { scenes: "微论坛", keys: ["意图", "验算", "标题", "题号", "出处", "层次", "题干", "步骤", "图", "图注", "侧栏", "计时", "宽图"], render: function (p, ctx) {
       if (!f(p, "出处")) ctx.err(p.line, "精选题要写出处", "出处: 2025·广东广州·中考真题 第24题");
       if (f(p, "层次")) ctx.levelsUsed.push([f(p, "层次"), p.line]);
       return question(p, ctx, { forum: true, timed: false, no: "1．", tag: "精选" }); } },
@@ -277,7 +313,7 @@
   function render(doc, env) {
     env = env || {};
     var meta = {}; Object.keys(doc.meta).forEach(function (k) { if (k[0] !== "_") meta[k] = doc.meta[k].value; });
-    var ctx = { meta: meta, brand: env.brand, errors: [], warnings: [], figJs: [], deriveJs: [], labsJs: [], assets: {}, timers: 0, refs: [], levelsUsed: [], levelsHave: [], kick: {}, pageLines: {}, timerList: [], srcUsed: {}, stems: [], R: env.R || null, fill: env.fill || null };
+    var ctx = { meta: meta, brand: env.brand, errors: [], warnings: [], figJs: [], deriveJs: [], labsJs: [], assets: {}, timers: 0, refs: [], levelsUsed: [], levelsHave: [], kick: {}, pageLines: {}, timerList: [], srcUsed: {}, stems: [], R: env.R || null, fill: env.fill || null, strict: !!env.strict };
     ctx.err = function (line, msg, fix) { ctx.errors.push({ line: line, msg: msg, fix: fix }); };
     ctx.warn = function (line, msg, fix) { ctx.warnings.push({ line: line, msg: msg, fix: fix }); };
     doc.errors.forEach(function (e) { ctx.errors.push(e); }); doc.warnings.forEach(function (e) { ctx.warnings.push(e); });
