@@ -108,33 +108,41 @@ try {
       for (const r of rest) out[r.i] = ((t.match(new RegExp("【" + r.i + "】([^\\n]*)")) || [])[1] || "说不准").replace(/\s/g, "");
       return out; };
     const all = qs.map((q, k) => ({ ...q, i: k + 1 }));
-    const B = await solve(all), j1 = await judge(all.map(q => ({ i: q.i, A: q.ans, B: B[q.i] })), ["A", "B"]);
-    const odd = all.filter(q => !/要看图|没做/.test(B[q.i]) && /≠|都不同|说不准/.test(j1[q.i]));
     const fix = [], doubt = [];
+    /* ⓪ 老师材料里写了答案的，以材料为准（实测：材料给了 -9√3，模型照样写 3√3） */
+    const mt = (await chat([{ role: "system", content: "从原始材料里找出下面每道题**材料上写明的答案**，原样抄下来。材料没写答案的写「无」，绝不自己做题。格式：每题一行「【题号】答案」。" },
+      { role: "user", content: "原始材料：\n\n" + MATERIAL + "\n\n题目：\n" + all.map(q => "【" + q.i + "】" + q.stem.slice(0, 80)).join("\n") }], 3000)).trim();
+    const M = Object.fromEntries(all.map(q => [q.i, ((mt.match(new RegExp("【" + q.i + "】([^\\n]*)")) || [])[1] || "无").trim()]));
+    const given = all.filter(q => !/^无|^$/.test(M[q.i]));
+    const jm = given.length ? await judge(given.map(q => ({ i: q.i, A: q.ans, M: M[q.i] })), ["A", "M"]) : {};
+    for (const q of given) if (/≠|都不同/.test(jm[q.i])) fix.push({ ...q, right: M[q.i], from: "原始材料上写的答案" });
+    const rest = all.filter(q => !given.includes(q));   // 材料有答案且对得上的，不用再花钱解
+    const B = rest.length ? await solve(rest) : {}, j1 = rest.length ? await judge(rest.map(q => ({ i: q.i, A: q.ans, B: B[q.i] })), ["A", "B"]) : {};
+    const odd = rest.filter(q => !/要看图|没做/.test(B[q.i]) && /≠|都不同|说不准/.test(j1[q.i]));
     if (odd.length) {
       const C = await solve(odd), j2 = await judge(odd.map(q => ({ i: q.i, A: q.ans, B: B[q.i], C: C[q.i] })), ["A", "B", "C"]);
       for (const q of odd) {
         const v = j2[q.i];
-        if (/^B=C≠A|^C=B≠A/.test(v)) fix.push({ ...q, right: B[q.i] });
+        if (/^B=C≠A|^C=B≠A/.test(v)) fix.push({ ...q, right: B[q.i], from: "两位老师独立做的答案（一致）" });
         else if (!/^A=C|^C=A|^A=B=C/.test(v)) doubt.push({ ...q, why: "两次独立解：" + B[q.i] + "／" + C[q.i] });
       }
     }
-    fs.writeFileSync(path.join(opt.out, "独立解题.txt"), all.map(q => q.no + "｜稿子：" + q.ans + "｜独立解：" + B[q.i] + "｜" + (j1[q.i] || "")).join("\n"));
-    say("[独立解题] " + all.length + " 道；两次独立解都说稿子错 " + fix.length + " 道，说不准 " + doubt.length + " 道" + fix.map(q => "\n  " + q.no + "：稿子 " + q.ans + " → 应为 " + q.right).join(""));
+    fs.writeFileSync(path.join(opt.out, "独立解题.txt"), all.map(q => q.no + "｜稿子：" + q.ans + "｜材料：" + M[q.i] + "｜独立解：" + (B[q.i] || "（材料有答案，未解）") + "｜" + (jm[q.i] || j1[q.i] || "")).join("\n"));
+    say("[对答案] " + all.length + " 道（材料带答案 " + given.length + " 道）；判定稿子错 " + fix.length + " 道，说不准 " + doubt.length + " 道" + fix.map(q => "\n  " + q.no + "：稿子 " + q.ans + " → 应为 " + q.right + "（" + q.from + "）").join(""));
     if (fix.length) {
-      msgs.push({ role: "assistant", content: draft }, { role: "user", content: "下面这几道题，两位老师分别独立做，答案一致，都和你的不一样。**你的答案是错的**，按他们的答案把这道题从头重做：步骤、==答案==、图、验算全部改成能推出这个答案的样子，不许换个说法保留原来的结论。其他页不要动。输出完整的新课件稿（只输出正文）。\n\n" +
-        fix.map(q => q.no + "（题干：" + q.stem.slice(0, 50) + "…）你写的：" + q.ans + "；正确答案：" + q.right).join("\n") });
+      msgs.push({ role: "assistant", content: draft }, { role: "user", content: "下面这几道题，你的答案和原始材料上写的答案、或两位老师独立做的一致答案不一样。**你的答案是错的**，按给出的正确答案把这道题从头重做：步骤、==答案==、图、验算全部改成能推出这个答案的样子，不许换个说法保留原来的结论。其他页不要动。输出完整的新课件稿（只输出正文）。\n\n" +
+        fix.map(q => q.no + "（题干：" + q.stem.slice(0, 50) + "…）你写的：" + q.ans + "；正确答案：" + q.right + "（来自" + q.from + "）").join("\n") });
       const before = draft;
       draft = await chat(msgs);
       await fixLoop("对答案后", 2);
       if (result.errs.length) {   // 改不好：退回改之前那版（装配台是全过的），这几道题盖章交老师，一道难题不拖垮整节课
         say("[对答案后] 改了两轮还有 " + result.errs.length + " 个错，退回原稿，这几道题交老师");
         draft = before; fs.writeFileSync(file, draft); result = assemble(file);
-        for (const q of fix) doubt.push({ ...q, why: "两次独立解都是 " + q.right + "，稿子写 " + q.ans + "，模型没改对" });
+        for (const q of fix) doubt.push({ ...q, why: q.from + "是 " + q.right + "，稿子写 " + q.ans + "，模型没改对" });
       }
       const now = Object.fromEntries(questions(draft).map(q => [q.no, q.ans]));
       const j3 = draft === before ? {} : await judge(fix.map(q => ({ i: q.i, A: now[q.no] || "（没找到）", B: q.right })), ["A", "B"]);
-      for (const q of fix) if (!doubt.includes(q) && !doubt.some(d => d.i === q.i) && !/^A=B|^B=A/.test(j3[q.i])) doubt.push({ ...q, why: "两次独立解都是 " + q.right + "，稿子改完还是 " + (now[q.no] || "？") });
+      for (const q of fix) if (!doubt.includes(q) && !doubt.some(d => d.i === q.i) && !/^A=B|^B=A/.test(j3[q.i])) doubt.push({ ...q, why: q.from + "是 " + q.right + "，稿子改完还是 " + (now[q.no] || "？") });
     }
     if (doubt.length) {   // 盖章交老师：装配台会把「待核:」列进提醒
       draft = draft.split(/\n(?=@页)/).map(pg => { const d = doubt.find(q => new RegExp("^题号:\\s*" + q.no.replace(/[.*+?^${}()|[\]\\]/g, "\\$&") + "\\s*$", "m").test(pg));

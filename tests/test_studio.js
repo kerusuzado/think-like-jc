@@ -31,7 +31,7 @@ for (const f of ["新授课", "专题课", "讲评课", "微论坛", "成绩分�
   const es = ENG.build(bad, { R, katex, textOnly: true }).errors.map(e => e.msg).join("\n");
   ok(/「0>3」不成立/.test(es), "步骤里 0>3 没拦下");
   ok(/不相等/.test(es), "式子和答案不相等没拦下");
-  ok(/题干写「如图」/.test(es), "纯文字材料的「如图」没要求待核");
+  ok(/「如图」「如表」/.test(es), "纯文字材料的「如图」没要求待核");
   ok(!/不成立|不相等|如图/.test(ENG.build(base, { R, katex, textOnly: false }).errors.map(e => e.msg).join()), "好样例被误报");
 }
 
