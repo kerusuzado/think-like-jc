@@ -31,6 +31,8 @@
       .replace(/(^|[^.\w])(sin|cos|tan|log)\(/g, "$1Math.$2(").replace(/(^|[^.\w])ln\(/g, "$1Math.log(");
     e = e.replace(/(\d)\s*(x|\(|Math)/g, "$1*$2").replace(/\)\s*(\(|x|\d|Math)/g, ")*$1").replace(/x\s*(\(|\d|Math)/g, "x*$1").replace(/x\s*x/g, "x*x");
     e = e.replace(/\^/g, "**");
+    /* JS 不许「-(x-1)**2」：把乘方整体包一层括号 */
+    e = e.replace(/(\([^()]*\)|[\w.]+)\*\*(\([^()]*\)|[\d.]+)/g, "($1**$2)");
     vars = vars || [];
     vars.forEach(function (v) { e = e.replace(new RegExp("(^|[^A-Za-z.])" + v + "(?=x)", "g"), "$1" + v + "*").replace(new RegExp("x(?=" + v + "(?![A-Za-z]))", "g"), "x*"); });
     vars.forEach(function (v) { e = e.replace(new RegExp("(\\d)\\s*" + v + "\\b", "g"), "$1*" + v).replace(new RegExp("\\b" + v + "\\s*\\(", "g"), v + "*("); });
@@ -120,7 +122,7 @@
           var r = expr(ex, ctx.vars); if (r.err) return E(it.line, r.err, r.fix || (/自变量用 x（现在左边/.test(r.err) ? "例：曲线 y=0.01x（横轴、纵轴的物理量名写在「图:」第一行）" : "写成 y=x^2-2x-3 这样（乘号可以省略，分数写 \\frac{a}{b}）"));
           it2.kind = "curve"; it2.js = r.js; it2.label = /不标|无标签/.test(m[1]) || (ctx.vars && ctx.vars.length) ? "" : r.tex;
           if (fr) { it2.from = val(fr[1], ctx.vars); it2.to = val(fr[2], ctx.vars); if (it2.from !== it2.from || it2.to !== it2.to) return E(it.line, "「从 … 到 …」看不懂", "例：从 -1 到 3，或含滑条变量：从 (20-L)/2 到 10"); }
-        } else if ((m = t.match(/^点\s*([A-Za-z\u4e00-\u9fa5]'?)?\s*[（(]\s*([^,，()（）]+(?:\([^()]*\))?[^,，()（）]*)\s*[,，]\s*(.+?)\s*[)）](.*)$/))) {
+        } else if ((m = t.match(/^点\s*([A-Za-z\u4e00-\u9fa5][0-9\u2080-\u2089]*'?)?\s*[（(]\s*([^,，()（）]+(?:\([^()]*\))?[^,，()（）]*)\s*[,，]\s*(.+?)\s*[)）](.*)$/))) {
           it2.kind = "point"; it2.name = m[1] || ""; it2.x = val(m[2], ctx.vars); it2.y = val(m[3], ctx.vars);
           if (it2.x !== it2.x || it2.y !== it2.y) return E(it.line, "点的坐标看不懂：" + t, "例：点 A(1,-4)");
           if (/坐标/.test(m[4])) it2.coord = (m[1] || "") + "(" + m[2] + "," + m[3] + ")";

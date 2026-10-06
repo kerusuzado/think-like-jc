@@ -4,6 +4,9 @@
 .fg-fig .figwrap > svg{width:100%;height:auto;display:block}
 .fg-fig g.hl{position:static;background:none;outline:none;opacity:0;transition:opacity .35s var(--ease)}
 .fg-fig g.hl.on{opacity:1}
+.fg-fig .ovl-i.hl{background:none;outline:none;border-radius:0;opacity:0;transition:opacity .35s var(--ease)}
+.fg-fig .ovl-i.hl.on{opacity:1}
+.fg-fig .figwrap.danger .ovl-i.hl.on{background:none;outline:none}
 .fg-fig .figwrap.danger g.hl.on{background:none;outline:none}
 .fg-fig figcaption{margin-top:4px;font-size:13.5px;color:var(--sub);text-align:center}
 .ovl-i.fg-lbl .katex{background:rgba(255,255,255,.9);padding:0 4px;border-radius:4px;font-size:1.05em;color:var(--brand-deep);font-weight:700}

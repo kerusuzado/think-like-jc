@@ -21,6 +21,8 @@ var FG = (function(){
     var g = el("g", {}, L[layer || "fg"]);
     return { g: g, halo: it.key ? el("g", {"class":"hl fg-halo", "data-k":it.key}, L.bg) : null };
   }
+  /* [+k] 的项：图上的 KaTeX 文字（坐标、曲线名）跟着线条一起藏、一起出现 */
+  function rvl(it, d){ if (d && it.reveal && it.key){ d.classList.add("hl", "fg-ovr"); d.dataset.k = it.key; } return d; }
   /* halo：把这一项的几何复制一份，加粗、描黄 */
   function halo(h, node){
     if (!h) return; var c = node.cloneNode(true);
@@ -46,15 +48,18 @@ var FG = (function(){
     var X = function(x){ return ox + x * ux; }, Y = function(y){ return oy - y * uy; };
     var x0 = (pad - ox) / ux, x1 = (W - pad - ox) / ux, y0 = (oy - (H - pad)) / uy, y1 = (oy - pad) / uy;
     var st = S.step || 1;
-    for (var gx = Math.ceil(x0 / st) * st; gx <= x1; gx += st) el("line", {x1:X(gx), y1:Y(y0), x2:X(gx), y2:Y(y1), stroke:C.grid, "stroke-width":1}, L.base);
-    for (var gy = Math.ceil(y0 / st) * st; gy <= y1; gy += st) el("line", {x1:X(x0), y1:Y(gy), x2:X(x1), y2:Y(gy), stroke:C.grid, "stroke-width":1}, L.base);
+    /* 刻度太密（不等比、范围大）时，各轴单独放大步长：1 → 2 → 5 → 10…，刻度字之间至少留 20px */
+    function up(s, u, min){ var seq = [1, 2, 2.5, 5]; for (var e = 0; s * u < min && e < 40; e++){ var p = Math.pow(10, Math.floor(Math.log10(s) + 1e-9)), m = s / p, i = seq.findIndex(function(v){ return v > m + 1e-9; }); s = i < 0 ? 10 * p : seq[i] * p; } return s; }
+    var stx = up(st, ux, 9), sty = up(st, uy, 9);
+    for (var gx = Math.ceil(x0 / stx) * stx; gx <= x1; gx += stx) el("line", {x1:X(gx), y1:Y(y0), x2:X(gx), y2:Y(y1), stroke:C.grid, "stroke-width":1}, L.base);
+    for (var gy = Math.ceil(y0 / sty) * sty; gy <= y1; gy += sty) el("line", {x1:X(x0), y1:Y(gy), x2:X(x1), y2:Y(gy), stroke:C.grid, "stroke-width":1}, L.base);
     el("line", {x1:X(x0), y1:Y(0), x2:X(x1) + 6, y2:Y(0), stroke:C.axis, "stroke-width":1.6}, L.base); arrowHead(L.base, X(x1) + 12, Y(0), 0, C.axis, 8);
     el("line", {x1:X(0), y1:Y(y0), x2:X(0), y2:Y(y1) - 6, stroke:C.axis, "stroke-width":1.6}, L.base); arrowHead(L.base, X(0), Y(y1) - 12, -Math.PI/2, C.axis, 8);
     T(L.lbl, X(x1) + 6, Y(0) + 14, S.xl || "x", {i:!S.xl, s:S.xl ? 13 : 15, a:S.xl ? "end" : "middle"}); T(L.lbl, X(0) + 12, Y(y1) - 10, S.yl || "y", {i:!S.yl, s:S.yl ? 13 : 15, a:S.yl ? "start" : "middle"}); var near = function(k, v){ return S.items.some(function(it){ return (it.kind === k || (k === "pt" && it.kind === "point")) && typeof (k === "pt" ? it.x : it.v) === "number" && (k === "pt" ? Math.abs(it.x) < st * .3 && Math.abs(it.y) < st * .3 : Math.abs(it.v - v) < 1e-9); }); };
     if (!near("pt")) T(L.lbl, X(0) - 10, Y(0) + 13, "O", {i:true, s:14});        // 原点上有点就不写 O，免得字压点
-    var ts = S.tick || st;
+    var ts = up(S.tick || st, ux, 22), tsy = up(S.tick || st, uy, 20);
     for (var tx = Math.ceil(x0 / ts) * ts; tx <= x1 - ts/2; tx += ts) if (Math.abs(tx) > 1e-9){ el("line", {x1:X(tx), y1:Y(0) - 3, x2:X(tx), y2:Y(0) + 3, stroke:C.axis}, L.base); if (!near("vline", tx)) T(L.base, X(tx), Y(0) + 14, fmt(tx), {s:11.5, c:C.sub, w:400}); }
-    for (var ty = Math.ceil(y0 / ts) * ts; ty <= y1 - ts/2; ty += ts) if (Math.abs(ty) > 1e-9){ el("line", {x1:X(0) - 3, y1:Y(ty), x2:X(0) + 3, y2:Y(ty), stroke:C.axis}, L.base); if (!near("hline", ty)) T(L.base, X(0) - 12, Y(ty), fmt(ty), {s:11.5, c:C.sub, w:400, a:"end"}); }
+    for (var ty = Math.ceil(y0 / tsy) * tsy; ty <= y1 - tsy/2; ty += tsy) if (Math.abs(ty) > 1e-9){ el("line", {x1:X(0) - 3, y1:Y(ty), x2:X(0) + 3, y2:Y(ty), stroke:C.axis}, L.base); if (!near("hline", ty)) T(L.base, X(0) - 12, Y(ty), fmt(ty), {s:11.5, c:C.sub, w:400, a:"end"}); }
     var clip = "fgc" + Math.random().toString(36).slice(2, 7);
     var defs = el("defs", {}, svg); var cp = el("clipPath", {id:clip}, defs); el("rect", {x:pad - 4, y:pad - 4, width:W - 2*pad + 8, height:H - 2*pad + 8}, cp);
     var ci = 0, PTS = [], placed = [];
@@ -83,12 +88,15 @@ var FG = (function(){
         if (it.label){ var lx = xb - (xb - xa) * .12, ly = f(lx); if (isFinite(ly)){ var q = spot(it.label, X(lx) + 6, Math.max(pad + 10, Math.min(H - pad - 10, Y(ly) - 14)));
           var cap = q.inn && svg.closest && svg.closest("figure") && svg.closest("figure").querySelector("figcaption");
           if (cap){ placed.pop(); if (!cap.querySelector('[data-leg="' + ci + '"]')) cap.insertAdjacentHTML("afterbegin", '<span class="fg-leg" data-leg="' + ci + '"><i style="background:' + c + '"></i>' + KX(it.label) + "</span>"); }   // 图里挤不下：曲线名放到图注里当图例
-          else ovl(ov, [W, H], q[0], q[1], KX(it.label), "fg-lbl"); } }
+          else rvl(it, ovl(ov, [W, H], q[0], q[1], KX(it.label), "fg-lbl")); } }
       } else if (it.kind === "point"){
         n = el("circle", {cx:X(it.x), cy:Y(it.y), r:4.8, fill:it.hollow ? "#fff" : c, stroke:c, "stroke-width":2}, G.g);
         var rt = X(it.x) > W * .72 && !it.dx;      // 靠右边的点：字放到点的左边，免得出图框
-        if (it.name && !it.coord) T(G.g, X(it.x) + (it.dx || (rt ? -10 : 10)), Y(it.y) + (it.dy || -12), it.name, {i:/^[A-Za-z]'?$/.test(it.name), s:15, w:700, a:rt ? "end" : "start"});
-        if (it.coord) ovl(ov, [W, H], X(it.x) + (rt ? -10 : 10), Y(it.y) - 16, KX(it.coord), "fg-lbl fg-sm " + (rt ? "R" : "L"));
+        var ly = Y(it.y) + (it.dy || -12), cy = Y(it.y) - 16;
+        if (!it.dy && ly > Y(0) - 10 && ly < Y(0) + 22) ly = Y(it.y) + 15;      // 字会压在 x 轴上：挪到点的下方
+        if (cy > Y(0) - 11 && cy < Y(0) + 22) cy = Y(it.y) + 17;
+        if (it.name && !it.coord) T(G.g, X(it.x) + (it.dx || (rt ? -10 : 10)), ly, it.name, {i:/^[A-Za-z][0-9\u2080-\u2089]*'?$/.test(it.name), s:15, w:700, a:rt ? "end" : "start"});
+        if (it.coord) rvl(it, ovl(ov, [W, H], X(it.x) + (rt ? -10 : 10), cy, KX(it.coord), "fg-lbl fg-sm " + (rt ? "R" : "L")));
       } else if (it.kind === "vline" || it.kind === "hline"){
         var v = it.kind === "vline";
         n = el("line", v ? {x1:X(it.v), y1:Y(y0), x2:X(it.v), y2:Y(y1)} : {x1:X(x0), y1:Y(it.v), x2:X(x1), y2:Y(it.v)}, G.g);
