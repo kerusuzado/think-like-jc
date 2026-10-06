@@ -32,6 +32,13 @@ for (const f of ["新授课", "专题课", "讲评课", "微论坛", "成绩分�
   ok(/「0>3」不成立/.test(es), "步骤里 0>3 没拦下");
   ok(/不相等/.test(es), "式子和答案不相等没拦下");
   ok(/「如图」「如表」/.test(es), "纯文字材料的「如图」没要求待核");
+  const two = base.replace("顶点为 $(1,-4)$，且经过点 $(3,0)$，求它的解析式。", "顶点为 $(1,-4)$，它可能是（ ）A. 甲 B. 乙 C. 丙 D. 丁").replace("- ==答案== $y=(x-1)^2-4$", "- ==答案== A、D");
+  ok(/两个选项/.test(ENG.build(two, { R, katex }).errors.map(e => e.msg).join()), "单选题写两个答案没拦下");
+  const chk = (a, v) => ENG.build(base.replace("- ==答案== $y=(x-1)^2-4$", "- ==答案== " + a).replace("- 当 x=3：(x-1)^2-4 = 0\n- 当 x=1：(x-1)^2-4 = -4", v), { R, katex }).errors.map(e => e.msg).join();
+  ok(/一处都没算出来/.test(chk("$-9\\sqrt{3}$", "- 当 a=2*sqrt(3)：sqrt(3)/2*a^2 = 6*sqrt(3)\n- -3*sqrt(3) = -3*sqrt(3)")), "答案和验算对不上没拦下");
+  const sym = ENG.build(base.replace("- ==答案== $y=(x-1)^2-4$", "- $y=(x-1)^2-5$\n- ==答案== $y=(x-1)^2-4$"), { R, katex }).errors.map(e => e.msg).join();
+  ok(/不相等/.test(sym), "步骤推出的式子和答案不等没拦下");
+  ok(!/一处都没算出来/.test(chk("$-9\\sqrt{3}$", "- -3*3*sqrt(3) = -9*sqrt(3)")), "验算算出了答案却被拦");
   ok(!/不成立|不相等|如图/.test(ENG.build(base, { R, katex, textOnly: false }).errors.map(e => e.msg).join()), "好样例被误报");
 }
 

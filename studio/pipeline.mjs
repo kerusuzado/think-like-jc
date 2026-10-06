@@ -86,9 +86,33 @@ async function fixLoop(tag, rounds) {
   }
 }
 
+/* 步骤推不出答案（答案照抄材料、推导是模型自己编的）：整份稿子改几轮还改不对时，
+   ① 只把那一页拿出来，用思考模式单独重推一次；② 还不对，就删掉推导、只留照抄的答案（和原课件一样只给答案）。
+   错的推导绝不上屏，也不留给老师核。 */
+const STEP_BAD = /两边不相等|一处都没算出来|和答案.*不相等|答案前面的式子/;
+async function rescueSteps() {
+  const bad = result.errs.filter(l => STEP_BAD.test(l)); if (!bad.length || bad.length < result.errs.length) return;
+  const pages = draft.split(/\n(?=@页)/); let at = 1;
+  const span = pages.map(pg => { const a = at; at += pg.split("\n").length; return [a, at - 1]; });
+  const hit = [...new Set(bad.map(l => +((l.match(/第\s*(\d+)\s*行/) || [])[1] || 0)).map(n => span.findIndex(([a, b]) => n >= a && n <= b)).filter(i => i >= 0))];
+  for (const i of hit) {
+    const why = bad.filter(l => { const n = +((l.match(/第\s*(\d+)\s*行/) || [])[1] || 0); return n >= span[i][0] && n <= span[i][1]; }).join("\n");
+    const got = (await chat([{ role: "system", content: "你是初中数学老师。下面是课件稿里的一页，「==答案==」是照抄老课件的，一定是对的，不许改。它前面的步骤推不出这个答案。请自己从题干出发认真做一遍，只用题干给的条件（图注、识图说明可能有错，不要当条件），把「步骤:」和「验算:」重写成真能一步步推出这个答案的样子；每一步的等式都要真成立。其他字段一字不改。只输出这一页（从 @页 那一行开始），不要解释。" },
+      { role: "user", content: pages[i] + "\n\n装配台报告：\n" + why }], 16000, true)).trim();
+    if (/^@页/.test(got)) { const keep = pages[i]; pages[i] = got; draft = pages.join("\n"); fs.writeFileSync(file, draft); result = assemble(file);
+      if (!result.errs.length || !result.errs.some(l => { const n = +((l.match(/第\s*(\d+)\s*行/) || [])[1] || 0); return n >= span[i][0] - 5 && n <= span[i][1] + 15; })) { say("[单页重推] 第 " + (i + 1) + " 页改对了"); continue; }
+      pages[i] = keep; }
+    pages[i] = pages[i].replace(/^步骤:\n(?:[ \t]*-.*\n?|[ \t]+.*\n?)*/m, m => m.split("\n").filter(l => /^步骤:|==答案==/.test(l)).join("\n") + "\n").replace(/^验算:\n(?:[ \t]*-.*\n?)*/m, "").replace(/^图注:.*\n?/m, "");   // 图注常常复述错的推导，一起删
+    draft = pages.join("\n"); fs.writeFileSync(file, draft); result = assemble(file);
+    say("[单页重推] 第 " + (i + 1) + " 页推不对，删掉推导、只留老课件的答案");
+  }
+  say("[单页重推后] 错误 " + result.errs.length);
+}
+
 try {
   draft = opt.draft ? fs.readFileSync(opt.draft, "utf8") : await chat(msgs);   // --draft：拿现成稿子直接从装配台往后走
   await fixLoop("装配", ROUNDS);
+  if (result.errs.length) await rescueSteps();
   if (!result.errs.length && !opt["no-solve"]) {
     /* 对答案用「多数票」：弱模型既不能自审，也不能当裁判（实测：让它「自己判断谁对」，它会坚持错答案）
        ① 独立解一遍（只给题干）→ ② 对不上的题再独立解一遍 → ③ 两次独立解一致且和稿子不同：直接给出正确答案命令照改
@@ -99,22 +123,22 @@ try {
       return Object.fromEntries(list.map(q => [q.i, ((t.match(new RegExp("【" + q.i + "】([^\\n]*)")) || [])[1] || "（没做）").trim()])); };
     /* 先用程序认掉明显相同的（「选 C」和「C」、$\tfrac52$ 和 5/2），剩下的才交给裁判；裁判空答当「说不准」，不当「一致」 */
     const norm = x => String(x).replace(/\\[()]|\$|==|\s|选|答案|即|：|:|[（(]\d[)）]/g, "").replace(/\\[td]?frac\{([^}]*)\}\{([^}]*)\}/g, "($1)/($2)").replace(/[\\{}]/g, "").replace(/²/g, "^2").replace(/[，,；;]/g, ";").replace(/\((\w+)\)/g, "$1").replace(/^[a-z]\w*=/i, "").replace(/^.*;([A-D])$/, "$1");   // 选择题只比字母
-    const judge = async (rows, cols) => {
+    const judge = async (rows, cols, note = "") => {
       const same = rows.filter(r => cols.every(c => norm(r[c]) === norm(r[cols[0]]))), rest = rows.filter(r => !same.includes(r));
       const out = Object.fromEntries(same.map(r => [r.i, cols.join("=")]));
       if (!rest.length) return out;
-      const t = (await chat([{ role: "user", content: "下面每道题有几个答案（" + cols.join("、") + "）。判断它们在数学上是否相同：写法不同但等价的算相同（例：「选 C」和「C」相同，「$\\pm2$」和「2 或 -2」相同）；一方多写了文字说明（如「第三象限」「(1)(2)」）、另一方没写，不算不同，只比最终的数、式子、范围、选项；写「要看图」「没做」的那个不参加比较。\n" +
+      const t = (await chat([{ role: "user", content: "下面每道题有几个答案（" + cols.join("、") + "）。判断它们在数学上是否相同：写法不同但等价的算相同（例：「选 C」和「C」相同，「$\\pm2$」和「2 或 -2」相同）；一方多写了文字说明（如「第三象限」「(1)(2)」）、另一方没写，不算不同，只比最终的数、式子、范围、选项；写「要看图」「没做」的那个不参加比较。" + note + "\n" +
         "每题一行，格式「【题号】相同的组」，例：「【3】A=B=C」「【4】B=C≠A」「【5】都不同」。不写别的。\n\n" + rest.map(r => "【" + r.i + "】\n" + cols.map(c => c + "：" + r[c]).join("\n")).join("\n\n") }], 24000, true)).trim();
       for (const r of rest) out[r.i] = ((t.match(new RegExp("【" + r.i + "】([^\\n]*)")) || [])[1] || "说不准").replace(/\s/g, "");
       return out; };
     const all = qs.map((q, k) => ({ ...q, i: k + 1 }));
     const fix = [], doubt = [];
     /* ⓪ 老师材料里写了答案的，以材料为准（实测：材料给了 -9√3，模型照样写 3√3） */
-    const mt = (await chat([{ role: "system", content: "从原始材料里找出下面每道题**材料上写明的答案**，原样抄下来。材料没写答案的写「无」，绝不自己做题。格式：每题一行「【题号】答案」。" },
+    const mt = (await chat([{ role: "system", content: "从原始材料里找出下面每道题**材料上写明的答案**。一道题的答案常常分在好几行、好几处（题目后面的一行、解题过程里、「[图里的答案或解答：…]」），要把这道题**每个小问的最终答案**都找齐，合成一行，写成「(1) …；(2) …」；只抄最终结果，不抄过程。材料没写答案的写「无」，绝不自己做题。格式：每题一行「【题号】答案」。" },
       { role: "user", content: "原始材料：\n\n" + MATERIAL + "\n\n题目：\n" + all.map(q => "【" + q.i + "】" + q.stem.slice(0, 80)).join("\n") }], 3000)).trim();
     const M = Object.fromEntries(all.map(q => [q.i, ((mt.match(new RegExp("【" + q.i + "】([^\\n]*)")) || [])[1] || "无").trim()]));
     const given = all.filter(q => !/^无|^$/.test(M[q.i]));
-    const jm = given.length ? await judge(given.map(q => ({ i: q.i, A: q.ans, M: M[q.i] })), ["A", "M"]) : {};
+    const jm = given.length ? await judge(given.map(q => ({ i: q.i, A: q.ans, M: M[q.i] })), ["A", "M"], "M 是从老课件里抄出来的，常常只写了部分小问、或只写到中间一步：只比 M 写到的那几问，M 写到的都和 A 一致就算相同；A 多答了 M 没写的小问，不算不同。") : {};
     for (const q of given) if (/≠|都不同/.test(jm[q.i])) fix.push({ ...q, right: M[q.i], from: "原始材料上写的答案" });
     const rest = all.filter(q => !given.includes(q));   // 材料有答案且对得上的，不用再花钱解
     const B = rest.length ? await solve(rest) : {}, j1 = rest.length ? await judge(rest.map(q => ({ i: q.i, A: q.ans, B: B[q.i] })), ["A", "B"]) : {};

@@ -117,6 +117,27 @@
     });
     if (tried && bad === tried) ctx.err(line, "答案前面的式子 " + L.replace(/\s/g, "") + " 和答案 " + R.replace(/\s/g, "") + " 不相等（代数进去算出来不一样）", "上一步的式子推错了，或者答案只改了结论没改推导：从出错那一步起重新推，步骤、答案、验算要对得上");
   }
+  // 步骤里连写的等号「A=B=C」：相邻两段字母一样时代几组数，必须相等（实测：模型在错式子后面直接接「=答案」糊过去）
+  function same(L, R) {
+    var vars = (L + " " + R).replace(/sqrt|abs|pi/g, "").match(/[A-Za-z]/g) || [], bad = 0, tried = 0;
+    [[2.7, 1.3, 1.9], [5.1, 2.2, 0.7], [3.4, 0.6, 2.5]].forEach(function (vals) {
+      var env = {}; vars.forEach(function (v) { env[v] = vals[(v.charCodeAt(0) * 7) % 3] + v.charCodeAt(0) % 5 * 0.37; });
+      var a = calc(L, env), b = calc(R, env); if (!isFinite(a) || !isFinite(b)) return;
+      tried++; if (Math.abs(a - b) > 1e-6 * Math.max(1, Math.abs(a), Math.abs(b))) bad++; });
+    return !(tried && bad === tried);
+  }
+  function eqChain(text, line, ctx) {
+    String(text).replace(/\$([^$]+)\$/g, function (_, m) {
+      if (/[<>]|\\[lg]e|≤|≥|\\pm|\\approx|,|，/.test(m)) return;
+      var seg = m.split("=").map(tex2calc);
+      for (var i = 1; i + 1 < seg.length; i++) {
+        var L = seg[i], R = seg[i + 1]; if (!L || !R) continue;
+        var key = function (x) { return (x.replace(/sqrt|abs|pi/g, "").match(/[A-Za-z]/g) || []).filter(function (v, k, a) { return a.indexOf(v) === k; }).sort().join(""); };
+        if (key(L) !== key(R) || !key(L)) continue;   // 只比字母一样的两段；纯数字的交给验算
+        if (!same(L, R)) { ctx.err(line, "步骤里「" + m.split("=")[i].trim() + " = " + m.split("=")[i + 1].trim() + "」两边不相等（代数进去算出来不一样）", "这一步推错了：从这一步起重新推，不许在错式子后面直接接上答案"); return; }
+      }
+    });
+  }
   // 步骤里写出来的纯数字比较（如「n>0>3」「-2<-5」）一定要成立：弱模型常把结论写反却不自知
   var NUM = "(?:\\tfrac\\{\\d+\\}\\{\\d+\\}|\\d+(?:\\.\\d+)?)", REL = "(?:<|>|\\le(?:q)?|\\ge(?:q)?|≤|≥)";
   var CHAIN = new RegExp("(^|[\\s,，;；(（=<>$])(-?" + NUM + "(?:\\s*" + REL + "\\s*-?" + NUM + ")+)(?=$|[\\s,，;；.。)）=$]|\\\\[a-z]*\\s)", "g");
@@ -144,10 +165,40 @@
     if (!it) warn(p.line, "这道题没写「意图:」", "在题干上面加一行「意图: 卡点 | 破题 | 常错」，写法见《读题与画面》第一节");
     else if (c.length < 3 || c.some(function (x) { return !x.trim(); })) warn(lineOf(p, "意图"), "「意图:」要写三段：卡点 | 破题 | 常错", "例：意图: 把「比 y」翻译成「比点的高低」 | 先分组：负的一组，正的一组 | 三个点一起套「减小」");
     else if (EMPTY_STUCK.test(c[0])) warn(lineOf(p, "意图"), "卡点写空了：「" + c[0] + "」对哪道题都成立", "写成「把 A 翻译成 B」：学生读完题到会动笔之间，缺的那一步转化是什么");
-    steps.forEach(function (s) { numCmp(s.text, s.line || lineOf(p, "步骤"), ctx); ansChain(s.text, s.line || lineOf(p, "步骤"), ctx); });
+    steps.forEach(function (s) { numCmp(s.text, s.line || lineOf(p, "步骤"), ctx); ansChain(s.text, s.line || lineOf(p, "步骤"), ctx); eqChain(s.text, s.line || lineOf(p, "步骤"), ctx); });
     var last = steps.filter(function (s) { return /==答案==/.test(s.text); }).pop(), ver = items(p, "验算");
     ver.forEach(function (v) { verify(v, ctx); });
-    if (last && /\d/.test(last.text.split("==答案==")[1] || "") && !/^\s*[A-D][\s。.]*$/.test(IL.plain(last.text.split("==答案==")[1])) && !ver.length) warn(lineOf(p, "步骤"), "答案里有数，但这一页没有「验算:」", "加「验算:」列表，把答案里每个数写成算式让装配台算一遍，例：- -12/(-3) = 4");
+    // 答案写成「$X=式子$」时，前面步骤里同一个 X 的最后结果必须和它相等（代几组数比）：实测答案照抄对了，步骤却把三角形当矩形算出另一个式子
+    var fin = last ? String(last.text.split("==答案==")[1] || "").trim() : "", eqA = fin.match(/^\$\s*([^$=]+?)\s*=\s*([^$=]+)\$[\s。.]*$/);
+    if (eqA && tex2calc(eqA[2])) steps.forEach(function (st) {
+      if (st === last) return;
+      String(st.text).replace(/\$([^$]+)\$/g, function (_, m) {
+        var seg = m.split("="); if (seg.length < 2 || seg[0].replace(/\s/g, "") !== eqA[1].replace(/\s/g, "")) return;
+        var L = tex2calc(seg[seg.length - 1]), R = tex2calc(eqA[2]); if (!L || !R) return;
+        var lv = L.replace(/sqrt|abs|pi/g, "").match(/[A-Za-z]/g) || [], rv = R.replace(/sqrt|abs|pi/g, "");
+        if (lv.some(function (v) { return rv.indexOf(v) < 0; })) return;   // 步骤里还带着没解出来的字母（如 y=a(x-1)^2-4 的 a），不比
+        var vars = (L + " " + R).replace(/sqrt|abs|pi/g, "").match(/[A-Za-z]/g) || [], bad = 0, tried = 0;
+        [[2.7, 1.3, 1.9], [5.1, 2.2, 0.7], [3.4, 0.6, 2.5]].forEach(function (vals) {
+          var env = {}; vars.forEach(function (v) { env[v] = vals[(v.charCodeAt(0) * 7) % 3] + v.charCodeAt(0) % 5 * 0.37; });
+          var a = calc(L, env), b = calc(R, env); if (!isFinite(a) || !isFinite(b)) return;
+          tried++; if (Math.abs(a - b) > 1e-6 * Math.max(1, Math.abs(a), Math.abs(b))) bad++; });
+        if (tried && bad === tried) ctx.err(st.line || lineOf(p, "步骤"), "步骤里算出 " + eqA[1].trim() + " = " + seg[seg.length - 1].trim() + "，和答案 " + eqA[2].trim() + " 不相等", "答案是照抄原始材料的，就按材料的解法把步骤改到真能推出这个答案；不许改答案去迁就步骤");
+      });
+    });
+    // 答案只有一个数（如 $-9\sqrt{3}$、$k=-4$）时，验算里必须有一处算出它：实测答案照抄对了、步骤却推出 $-3\sqrt{3}$，验算也跟着步骤走
+    var one = fin.match(/^\$\s*(?:[A-Za-z]\w*\s*=\s*)?([^$=]+)\$[\s。.]*$/), want = one && tex2calc(one[1]);
+    if (want && !/[A-Za-z]/.test(want.replace(/sqrt|abs|pi/g, "")) && ver.length) {
+      var A = calc(want, {}), got = [];
+      ver.forEach(function (v) { var t = String(v.text).replace(/\$/g, "").replace(/[−–]/g, "-"), env = {}, m = t.match(/^当\s*(.+?)\s*[：:]\s*(.+)$/);
+        if (m) { m[1].split(/[,，;；]\s*/).forEach(function (a) { var q = a.match(/^\s*([A-Za-z]\w*)\s*=\s*(.+?)\s*$/); if (q) { env[q[1]] = calc(q[2], env); got.push(env[q[1]]); } }); t = m[2]; }
+        t.split(/\s*(?:>=|<=|≥|≤|≈|≠|=|>|<)\s*/).forEach(function (x) { got.push(calc(x, env)); });
+        (t.match(/-?\d+(?:\.\d+)?/g) || []).forEach(function (x) { got.push(+x); }); });
+      steps.forEach(function (st) { if (st === last) return; String(st.text).replace(/\$([^$]+)\$/g, function (_, m) {   // 前面步骤里写出来的数也算（如 $|k|=10$、$k=\pm 3$ 里的 3）
+        m.replace(/\\pm/g, "-").split(/\s*(?:=|<|>|\\le(?:q)?|\\ge(?:q)?|≤|≥|,|，|;|；|\\quad)\s*/).forEach(function (x) { var c = tex2calc(x); if (c && !/[A-Za-z]/.test(c.replace(/sqrt|abs|pi/g, ""))) got.push(calc(c, {})); }); }); });
+      if (isFinite(A) && !got.some(function (g) { return isFinite(g) && Math.abs(g - A) <= 1e-6 * Math.max(1, Math.abs(A)); }))
+        ctx.err(lineOf(p, "验算"), "答案 " + one[1].trim() + " 在「验算:」里一处都没算出来：步骤推出来的数和答案对不上", "答案是照抄原始材料的，就按材料的解法把步骤改到真能推出这个答案，并在验算里把它算出来；不许改答案去迁就步骤");
+    }
+    if (last && /\d/.test(last.text.split("==答案==")[1] || "") && !/^\s*[A-D][\s。.]*$/.test(IL.plain(last.text.split("==答案==")[1])) && !ver.length && steps.length > 1) warn(lineOf(p, "步骤"), "答案里有数，但这一页没有「验算:」", "加「验算:」列表，把答案里每个数写成算式让装配台算一遍，例：- -12/(-3) = 4");
   }
   function question(p, ctx, o) {
     var tcols = /^表格/.test(f(p, "图")) ? Math.max.apply(0, items(p, "图").map(function (i) { return cells(i.text).length; }).concat([0])) : 0;
@@ -174,8 +225,12 @@
     if (f(p, "题干")) ctx.stems.push({ line: lineOf(p, "题干"), no: f(p, "题号") || "", g: grams(f(p, "题干")), src: nums(f(p, "原题")) });
     // 弱模型常犯：题干没给选项，答案却写「选 C」（选项字母是编的）
     var ans = steps.map(function (s) { return s.text; }).join(" "), stem = f(p, "题干") || "";
-    if (/选\s*[（(]?\s*[A-D]\b/.test(ans) && !/(^|[\s；;，,(（])[A-D]\s*[.．、:：]|[（(][A-D][)）]/.test(stem))
+    if (/选\s*[（(]?\s*[A-D]\b/.test(ans) && !/(^|[\s；;，,(（])[A-D]\s*[.．、:：]|[（(][A-D][)）]/.test(stem) && !/^原图/.test(f(p, "图") || ""))
       ctx.err(lineOf(p, "步骤"), "答案写了「选 A/B/C/D」，但题干里没有选项", "原题是选择题就把选项抄进题干（A. … B. … C. … D. …）；不是选择题就删掉「选 X」，直接写结果");
+    // 弱模型常犯：选项是编的，编出两个都对，答案写成「A、D」
+    var fin = (ans.match(/==答案==\s*(.*)$/) || [])[1] || "";
+    if (/^\s*(选\s*)?[A-D]\s*[、,，和与及]\s*[A-D]\b/.test(fin) && !/多选|哪些|所有/.test(stem))
+      ctx.err(lineOf(p, "步骤"), "单选题的答案写了两个选项（" + fin.trim().slice(0, 12) + "）", "单选题只有一个答案：多半是选项看错或编错了。照抄原始材料里的答案和选项，不许自己编选项");
     var keys = cells(f(p, "小问") || "").filter(Boolean);
     var rate = "", names = "";
     if (keys.length && ctx.R) { rate = "　" + ctx.R.rateHtml(keys, ctx); names = ctx.R.namesHtml(keys, ctx, p); }
